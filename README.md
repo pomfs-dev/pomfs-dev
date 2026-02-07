@@ -16,19 +16,17 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 - **Development:** GitHub CLI, Python, Automation Frameworks
 - **Marketing & SEO:** 14+ years of expertise in SEO strategy and e-commerce (Coupang specialist)
 
+## 📈 Technical Performance
+![David's GitHub Stats](https://github-readme-stats.vercel.app/api?username=pomfs-dev&show_icons=true&title_color=70a145&icon_color=70a145&text_color=ffffff&bg_color=0d1117&hide_border=true&count_private=true)
+
 ## 🌐 Connect with Me
 - **Company:** [Pride of Misfits (P.O.MFS)](https://prideofmisfits.com)
-- **Location:** Gongdeok Office & Magok Studio, Seoul, Korea
 - **Email:** [david.kwon@prideofmisfits.com](mailto:david.kwon@prideofmisfits.com)
+
+<p align="center">
+  <img src="https://komarev.com/ghpvc/?username=pomfs-dev&color=70a145&style=flat-square&label=VISITORS" alt="visitors" />
+</p>
 
 ---
 
 > "Orchestrating the future where AI meets Art." 🎨✨
-
----
-
-## 📈 Technical Performance
-
-![David's GitHub Stats](https://github-readme-stats.vercel.app/api?username=pomfs-dev&show_icons=true&theme=radical&hide_border=true&count_private=true)
-
-![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=pomfs-dev&layout=compact&theme=radical&hide_border=true)
