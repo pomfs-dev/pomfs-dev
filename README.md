@@ -24,3 +24,11 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 ---
 
 > "Orchestrating the future where AI meets Art." 🎨✨
+
+---
+
+## 📈 Technical Performance
+
+![David's GitHub Stats](https://github-readme-stats.vercel.app/api?username=pomfs-dev&show_icons=true&theme=radical&hide_border=true&count_private=true)
+
+![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=pomfs-dev&layout=compact&theme=radical&hide_border=true)
