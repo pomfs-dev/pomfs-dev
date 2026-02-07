@@ -24,7 +24,7 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 - **Company:** [Pride of Misfits (P.O.MFS)](https://prideofmisfits.com)
 - **Email:** [david.kwon@prideofmisfits.com](mailto:david.kwon@prideofmisfits.com)
 
-<table cellpadding="5">
+<table cellpadding="5" cellspacing="0" border="0">
   <tr>
     <td><img src="https://wakatime.com/badge/user/2469d651-952d-4418-ad2d-27a0b70774ac.svg" alt="Total time coded since Feb 7 2026" /></td>
     <td><img src="https://komarev.com/ghpvc/?username=pomfs-dev&color=70a145&style=flat-square&label=VISITORS" alt="visitors" /></td>
