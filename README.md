@@ -27,7 +27,7 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 <p align="center">
   <img src="https://komarev.com/ghpvc/?username=pomfs-dev&color=70a145&style=flat-square&label=VISITORS" alt="visitors" />
 </p>
-[![wakatime](https://wakatime.com/badge/user/2469d651-952d-4418-ad2d-27a0b70774ac.svg)](https://wakatime.com/@2469d651-952d-4418-ad2d-27a0b70774ac)
+<a href="https://wakatime.com/@2469d651-952d-4418-ad2d-27a0b70774ac"><img src="https://wakatime.com/badge/user/2469d651-952d-4418-ad2d-27a0b70774ac.svg" alt="Total time coded since Feb 7 2026" /></a>
 
 ---
 
