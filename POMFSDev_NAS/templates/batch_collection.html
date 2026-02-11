@@ -1,0 +1,2561 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>일괄 수집 및 분석 : P.O.MFS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            margin-top: 20px;
+        }
+
+        .pagination .page-link {
+            padding: 6px 12px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 4px;
+        }
+
+        .pagination .page-link:hover {
+            background-color: #444;
+            color: #fff;
+            border-color: #666;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: var(--accent-color);
+            color: #000;
+            border-color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .pagination .page-item.disabled .page-link {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #555;
+            border-color: transparent;
+        }
+
+        .status-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>🤖 인스타그램 계정 일괄 수집/분석</h1>
+        <nav>
+            <a href="/" class="btn btn-secondary">대시보드</a>
+        </nav>
+    </header>
+
+    <div class="card mb-4" style="background: var(--card-bg); border-color: var(--border-color);">
+        <h4>📂 일괄 처리 대상 업로드</h4>
+        <form method="POST" enctype="multipart/form-data" action="{{ url_for('batch_collection') }}">
+            <div style="display: flex; gap: 10px; align-items: flex-start;">
+                <div style="flex-grow: 1;">
+                    <input type="file" name="file" class="form-control"
+                        style="background-color: var(--input-bg); color: var(--text-color); border: 1px solid var(--border-color);"
+                        accept=".xlsx" required>
+                    <small style="color: var(--text-muted); display:block; margin-top:5px;">엑셀 파일(.xlsx)을 업로드해주세요.
+                        (userName
+                        컬럼 필수)</small>
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="background-color: var(--accent-color); color: #000; border: none; font-weight: bold; white-space: nowrap;">⬆️
+                    리스트
+                    업로드/갱신</button>
+            </div>
+        </form>
+    </div>
+
+    {% if rows and rows|length > 0 %}
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: nowrap; gap: 20px;">
+            <!-- Left: Info & Guide -->
+            <div style="display: flex; flex-direction: column; justify-content: center;">
+                <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 4px;">
+                    <div style="background: linear-gradient(135deg, #ff6b6b, #ee5a5a); padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 1.1em;">
+                        📊 총 <span id="total-accounts-count" style="color: #fff; font-size: 1.3em;">{{ total_rows }}</span>개 계정
+                    </div>
+                    <div id="auto-collect-progress" style="display: none; background: linear-gradient(135deg, #4ecdc4, #44a08d); padding: 8px 16px; border-radius: 8px; font-weight: bold;">
+                        ⏳ 남은 계정: <span id="remaining-count" style="color: #fff; font-size: 1.2em;">0</span>개
+                    </div>
+                </div>
+                <div style="font-size: 0.8em; color: #888;">
+                    현재 페이지: {{ (page-1)*50 + 1 }} - {{ (page-1)*50 + rows|length }} 표시 중
+                </div>
+            </div>
+
+            <!-- Right: Controls -->
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <!-- Process Flow Group -->
+                <div
+                    style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.05); border-radius: 12px; border: 1px solid var(--border-color); padding: 5px 10px;">
+
+                    <!-- Step 1: Batch Limit -->
+                    <div
+                        style="display: flex; align-items: center; padding: 0 15px; border-right: 1px solid rgba(255,255,255,0.1);">
+                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 3px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="scrape-limit"
+                                    style="font-size: 0.85em; color: #ccc; margin: 0; line-height: 1.2;">1. 게시물
+                                    수집</label>
+                                <span id="scrape-limit-value"
+                                    style="font-size: 1em; font-weight: bold; color: var(--accent-color); margin-left: 8px;">1</span>
+                            </div>
+                            <input type="range" class="form-range" id="scrape-limit" min="1" max="10" value="1"
+                                autocomplete="off" style="width: 120px; height: 4px; padding: 0; margin: 0;">
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Concurrency -->
+                    <div style="display: flex; align-items: center; padding: 0 15px; border-right: 1px solid rgba(255,255,255,0.1);">
+                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 3px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="concurrency-level"
+                                    style="font-size: 0.85em; color: #ccc; margin: 0; line-height: 1.2;">2. 계정
+                                    동시작업</label>
+                                <span id="concurrency-value"
+                                    style="font-size: 1em; font-weight: bold; color: var(--accent-color); margin-left: 8px;">1</span>
+                            </div>
+                            <input type="range" class="form-range" id="concurrency-level" min="1" max="6" value="5"
+                                autocomplete="off" style="width: 120px; height: 4px; padding: 0; margin: 0;">
+                        </div>
+                    </div>
+
+                    <!-- Step 3: Auto Collect Amount -->
+                    <div style="display: flex; align-items: center; padding: 0 15px;">
+                        <div style="display: flex; flex-direction: column; justify-content: center; gap: 3px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <label for="auto-collect-amount"
+                                    style="font-size: 0.85em; color: #ccc; margin: 0; line-height: 1.2;">3. 자동 수집</label>
+                                <input type="number" id="auto-collect-value" min="1" max="{{ total_rows }}" value="{{ total_rows }}"
+                                    style="width: 60px; font-size: 1em; font-weight: bold; color: #ff6b6b; background: transparent; border: 1px solid #555; border-radius: 4px; text-align: center; padding: 2px 4px; margin-left: 8px;">
+                            </div>
+                            <input type="range" class="form-range" id="auto-collect-amount" min="1" max="{{ total_rows }}" value="{{ total_rows }}"
+                                autocomplete="off" style="width: 140px; height: 4px; padding: 0; margin: 0;">
+                        </div>
+                    </div>
+
+                    <!-- Step 4: Start Button -->
+                    <div style="display: flex; align-items: center; padding-left: 5px; gap: 5px;">
+                        <button id="btn-start-auto" class="btn btn-success" onclick="startAutoCollect()"
+                            style="height: 48px; padding: 0 25px; font-weight: bold; font-size: 1.05em; display: flex; align-items: center; gap: 8px; border-radius: 8px; white-space: nowrap;">
+                            🚀 자동 수집 시작
+                        </button>
+                        <button id="btn-stop-all" class="btn btn-danger" onclick="stopProcessing()"
+                            style="display:none; height: 48px; padding: 0 25px; font-weight: bold; font-size: 1.05em; align-items: center; gap: 8px; border-radius: 8px; white-space: nowrap;">
+                            ⏹️ 중지
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Admin Group -->
+                <div
+                    style="display: inline-flex; gap: 8px; align-items: center; margin-left: 10px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px;">
+                    <!-- Reset Button -->
+                    <button class="btn btn-secondary" onclick="resetPageStatus()"
+                        style="height: 44px; padding: 0 15px; font-size: 0.9em; display: flex; align-items: center; gap: 5px; border-radius: 8px; white-space: nowrap;"
+                        title="모든 상태 초기화">
+                        🔄 초기화하기
+                    </button>
+
+                    <!-- Delete Button -->
+                    <form method="POST" action="{{ url_for('batch_collection') }}"
+                        style="display:inline-block; margin: 0;" onsubmit="return confirm('정말 리스트를 삭제하시겠습니까?');">
+                        <input type="hidden" name="action" value="delete">
+                        <button type="submit" class="btn btn-outline-danger"
+                            style="height: 44px; padding: 0 15px; font-size: 0.9em; display: flex; align-items: center; gap: 5px; border-radius: 8px; white-space: nowrap;"
+                            title="리스트 전체 삭제">
+                            🗑️ 리스트 삭제하기
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Legend Guide -->
+        <details
+            style="margin-bottom: 15px; background: #f8f9fa; color: #333; padding: 10px; border-radius: 5px; border: 1px solid #ddd;">
+            <summary style="font-weight: bold; cursor: pointer; color: #555;">ℹ️ 상태 메시지 도움말 (클릭하여 열기)</summary>
+            <ul style="margin: 10px 0 0 20px; font-size: 0.9em; line-height: 1.6;">
+                <li><span style="color:#6c757d; font-weight:bold;">⚪ 게시물 없음</span>: 인스타에 게시물이 없거나, 이미지 없이 동영상(Reels)만 있는
+                    경우입니다.</li>
+                <li><span style="color:#ff8800; font-weight:bold;">⚠️ 분석완료 (추출 실패)</span>: 이미지는 가져왔으나 AI가 '날짜'나 '공연정보'를
+                    식별하지 못한 경우입니다. (수동 검토 필요)</li>
+                <li><span style="color:#17a2b8; font-weight:bold;">🔎 검토 대기</span>: AI 분석이 완료되었으나, DB 저장 전 내용을 확인해야 합니다.
+                </li>
+                <li><span style="color:#17a2b8; font-weight:bold;">⚠️ DB중복</span>: 분석 결과가 이미 데이터베이스에 존재하는 공연입니다.</li>
+                <li><span style="color:#28a745; font-weight:bold;">✅ 저장됨</span>: 정상적으로 분석되어 새로운 공연 정보가 저장되었습니다.</li>
+            </ul>
+        </details>
+
+        <!-- Progress Dashboard (Global) -->
+        <div id="progress-dashboard"
+            style="display:none; margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; background: #fff;">
+            <h4>🚀 전체 배치 작업 진행 상황</h4>
+
+            <!-- Global Progress Bar -->
+            <div style="margin-bottom: 5px; font-weight: bold; font-size: 0.9em; color: #555;">
+                전체 진행률: <span id="global-progress-text">0/0</span>
+            </div>
+            <div style="background-color: #e9ecef; border-radius: 5px; overflow: hidden; margin-bottom: 15px;">
+                <div id="global-progress-bar"
+                    style="width: 0%; height: 25px; background-color: #28a745; text-align: center; line-height: 25px; color: white; transition: width 0.5s;">
+                    0%</div>
+            </div>
+
+            <!-- Log Terminal -->
+            <div id="log-terminal"
+                style="background: #1e1e1e; color: #00ff00; padding: 10px; height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em; border-radius: 5px; border: 1px solid #333;">
+                <div style="color: #666;">대기 중...</div>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 15%;">Instagram ID</th>
+                    <th style="width: 20%;">진행상황</th>
+                    <th style="width: 15%;">User Name</th>
+                    <th style="width: 10%;">소요 시간</th>
+                    <th style="width: 35%;">상태 / 결과</th>
+                </tr>
+            </thead>
+            <tbody id="accounts-body">
+                <!-- Rows injected by JS -->
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center" style="margin-top: 20px;">
+                <!-- First Page -->
+                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('batch_collection', page=1) }}" aria-label="First"
+                        title="첫 페이지">
+                        <span aria-hidden="true">«</span>
+                    </a>
+                </li>
+
+                <!-- Previous -->
+                <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                    <a class="page-link" href="{{ url_for('batch_collection', page=page-1) }}" aria-label="Previous"
+                        title="이전">
+                        <span aria-hidden="true">‹</span>
+                    </a>
+                </li>
+
+                <!-- Page Numbers (Window: Current +/- 5) -->
+                {% for p in range(1, total_pages + 1) %}
+                {% if p >= page - 4 and p <= page + 4 %} <li class="page-item {% if p == page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for('batch_collection', page=p) }}">{{ p }}</a>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+
+                    <!-- Next -->
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('batch_collection', page=page+1) }}" aria-label="Next"
+                            title="다음">
+                            <span aria-hidden="true">›</span>
+                        </a>
+                    </li>
+
+                    <!-- Last Page -->
+                    <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('batch_collection', page=total_pages) }}"
+                            aria-label="Last" title="마지막 페이지">
+                            <span aria-hidden="true">»</span>
+                        </a>
+                    </li>
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="alert text-center" role="alert"
+        style="margin-top: 20px; background-color: var(--card-bg); color: var(--text-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 40px;">
+        <h4>📝 일괄 처리할 데이터가 없습니다.</h4>
+        <p style="color: var(--text-muted);">상단의 <strong>"리스트 업로드/갱신"</strong> 기능을 통해 엑셀 파일을 업로드해주세요.</p>
+    </div>
+    {% endif %}
+
+    <script>
+        // Define accountsData from server-side template
+        let accountsData = {{ rows | tojson }};
+        
+        // Collection stats from server - shows which accounts are already collected
+        const collectionStats = {{ collection_stats | tojson | default('{}') }};
+
+        // Pagination state variables
+        const currentPage = {{ page }};
+        const totalPages = {{ total_pages }};
+        const itemsPerPage = 50;
+
+        // Global variables for batch progress
+        let globalTotalTasks = 0;
+        let globalCompletedTasks = 0;
+
+        function updateGlobalProgress(currentTaskPercent) {
+            const bar = document.getElementById('global-progress-bar');
+            const txt = document.getElementById('global-progress-text');
+
+            if (!bar || !txt) return;
+
+            const totalPoints = (globalTotalTasks > 0) ? globalTotalTasks * 100 : 1;
+            const currentPoints = (globalCompletedTasks * 100) + currentTaskPercent;
+
+            let pct = 0;
+            if (globalTotalTasks > 0) {
+                pct = Math.min(100, (currentPoints / totalPoints) * 100);
+            }
+
+            bar.style.width = `${pct}%`;
+            bar.innerText = `${Math.round(pct)}%`;
+            txt.innerText = `${globalCompletedTasks}/${globalTotalTasks} 완료`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('accounts-body');
+            tbody.innerHTML = '';
+
+            // Current page offset for numbering
+            const pageOffset = {{ (page - 1) * 50
+        }};
+
+        accountsData.forEach((row, index) => {
+            const globalIndex = pageOffset + index + 1;
+
+            // Safe access to properties
+            const username = row.userName || "";
+            const fullName = row.fullName || "-";
+            
+            // Check if this account is already collected
+            const stats = collectionStats[username];
+            const isCollected = stats && stats.post_count > 0;
+            
+            // Determine initial state based on collection status
+            let progressBarClass = 'bg-info';
+            let progressWidth = '0%';
+            let statusText = '대기';
+            let statusColor = '#888';
+            let resultHtml = `
+                <span class="status-text" style="color: #666; white-space: nowrap;">대기 중...</span>
+                <button class="btn btn-sm btn-primary"
+                    style="padding: 2px 8px; font-size: 0.8em; margin-left: 10px; white-space: nowrap; min-width: 60px;"
+                    onclick="processSingle('${username}', ${index})">개별 시작</button>
+            `;
+            
+            if (isCollected) {
+                progressBarClass = 'bg-success';
+                progressWidth = '100%';
+                statusText = '수집 완료';
+                statusColor = '#28a745';
+                const postCount = stats.post_count || 0;
+                resultHtml = `
+                    <span class="badge bg-success" style="font-size: 0.85em;">✅ ${postCount}건 수집됨</span>
+                    <button class="btn btn-sm btn-outline-secondary"
+                        style="padding: 2px 8px; font-size: 0.75em; margin-left: 8px; white-space: nowrap;"
+                        onclick="processSingle('${username}', ${index})">재수집</button>
+                `;
+            }
+
+            const tr = `
+                <tr>
+                    <td>${globalIndex}</td>
+                    <td style="font-weight: bold; color: var(--accent-color);">
+                        @${username}
+                        <a href="https://instagram.com/${username}" target="_blank" style="text-decoration: none;">🔗</a>
+                    </td>
+                    
+                    <!-- Progress Column -->
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="progress flex-grow-1" style="height: 15px; background-color: #444; margin-right: 10px;">
+                                <div id="progress-bar-${index}" class="progress-bar ${progressBarClass}" role="progressbar" style="width: ${progressWidth}"></div>
+                            </div>
+                            <span id="status-text-${index}" style="font-size: 0.8em; min-width: 60px; color: ${statusColor};">${statusText}</span>
+                        </div>
+                    </td>
+
+                    <td>${fullName}</td>
+                    
+                    <!-- Time Column -->
+                    <td id="time-cell-${index}" style="font-size: 0.9em; color: var(--text-muted);">-</td>
+                    
+                    <td>
+                        <div id="result-${index}" class="result-area" style="display: flex; align-items: center; justify-content: space-between;">
+                            ${resultHtml}
+                        </div>
+                    </td>
+                </tr>
+                `;
+            tbody.innerHTML += tr;
+        });
+        }
+
+        // Render immediately
+        document.addEventListener('DOMContentLoaded', renderTable);
+    </script>
+
+    <!-- ... pagination ... -->
+    </div>
+
+    <script>
+        let isProcessing = false;
+        let stopRequested = false;
+
+        function stopProcessing() {
+            stopRequested = true;
+            const stopBtn = document.getElementById('btn-stop-all');
+            if (stopBtn) {
+                stopBtn.innerText = "🛑 중지 중...";
+                stopBtn.disabled = true;
+            }
+            
+            // Force stop: Clear all running tasks from localStorage
+            clearAllRunningTasks();
+            clearBatchResults();
+            
+            // End batch session on server
+            fetch('/api/batch_session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'end' })
+            }).catch(() => {});
+            
+            // If we're stuck (not isProcessing but UI shows running), force reset UI
+            if (!isProcessing) {
+                resetBatchUI();
+                alert("배치 작업이 강제 중지되었습니다. 페이지를 새로고침합니다.");
+                location.reload();
+            }
+        }
+        
+        function resetBatchUI() {
+            isProcessing = false;
+            stopRequested = false;
+            const startBtn = document.getElementById('btn-start-auto');
+            const stopBtn = document.getElementById('btn-stop-all');
+            const progressDiv = document.getElementById('auto-collect-progress');
+            
+            if (startBtn) startBtn.style.display = 'inline-block';
+            if (stopBtn) {
+                stopBtn.style.display = 'none';
+                stopBtn.disabled = false;
+                stopBtn.innerText = '⏹️ 중지';
+            }
+            if (progressDiv) progressDiv.style.display = 'none';
+        }
+
+        function resetPageStatus() {
+            if (isProcessing) {
+                alert("작업 중에는 초기화할 수 없습니다. 먼저 중지해주세요.");
+                return;
+            }
+            if (!confirm("화면의 모든 상태를 '대기 중'으로 초기화하시겠습니까? (이미 수집된 데이터는 DB에서 삭제되지 않습니다)")) {
+                return;
+            }
+
+            const resultAreas = document.querySelectorAll('.result-area');
+            resultAreas.forEach((div, index) => {
+                // Find parameters for the button restoration
+                // We'll just reload the page? No, user wants button.
+                // Let's reload page is safest to get state back, but user wanted button.
+                // Let's just reset the innerHTML to default.
+                // We need the username and index to restore the button correctly.
+                // The button inside has onclick="processSingle('...', ...)"
+
+                // Hack: Instead of parsing, let's just reload the page. 
+                // It's cleaner and ensures consistency.
+                window.location.reload();
+            });
+        }
+
+        async function processSingle(username, index) {
+            const resultDiv = document.getElementById(`result-${index}`);
+            const rowProgressBar = document.getElementById(`progress-bar-${index}`);
+            const rowStatusText = document.getElementById(`status-text-${index}`);
+            const logTerminal = document.getElementById('log-terminal');
+
+            // Set Active State
+            if (resultDiv) resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>';
+
+            if (rowProgressBar) {
+                rowProgressBar.classList.remove('bg-info', 'bg-success', 'bg-danger');
+                rowProgressBar.classList.add('bg-success', 'progress-bar-animated', 'progress-bar-striped');
+                rowProgressBar.style.width = '0%';
+            }
+            if (rowStatusText) {
+                rowStatusText.innerText = "대기중...";
+                rowStatusText.style.color = "#fff";
+            }
+
+            // Log start
+            if (logTerminal) {
+                logTerminal.innerHTML += `<div style="color: #fff; margin-top: 2px;">▶ <strong>${username}</strong> 작업 시작</div>`;
+                logTerminal.scrollTop = logTerminal.scrollHeight;
+            }
+
+            const limitVal = document.getElementById('scrape-limit').value || 3;
+
+            try {
+                // Async Start
+                const startResponse = await fetch('/api/auto_process_async', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        venue_name: null,
+                        instagram_id: username,
+                        limit: limitVal
+                    })
+                });
+
+                if (!startResponse.ok) throw new Error("API Error");
+                const startData = await startResponse.json();
+
+                if (!startData.success) {
+                    throw new Error(startData.error || "Unknown Error");
+                }
+
+                const taskId = startData.task_id;
+                const startTime = Date.now();
+                
+                // Save running task to localStorage for page navigation persistence
+                saveRunningTask(taskId, username, -1, index);
+
+                // Poll
+                return new Promise((resolve) => {
+                    let consecutive404Count = 0;
+                    const MAX_404_COUNT = 3;
+                    
+                    const pollInterval = setInterval(async () => {
+                        try {
+                            const statusResp = await fetch(`/api/task_status/${taskId}`);
+                            
+                            // Handle 404 error (server restarted, task lost)
+                            if (statusResp.status === 404) {
+                                consecutive404Count++;
+                                if (consecutive404Count >= MAX_404_COUNT) {
+                                    clearInterval(pollInterval);
+                                    removeRunningTask(taskId);
+                                    
+                                    if (rowProgressBar) {
+                                        rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                                        rowProgressBar.classList.add('bg-warning');
+                                    }
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = "서버 재시작";
+                                        rowStatusText.style.color = "#ff9800";
+                                    }
+                                    if (resultDiv) {
+                                        resultDiv.innerHTML = `<span class="badge bg-warning text-dark">⚠️ 서버 재시작됨</span>`;
+                                    }
+                                    if (logTerminal) {
+                                        logTerminal.innerHTML += `<div style="color: #ff9800;">⚠️ ${username}: 서버 재시작으로 작업 유실</div>`;
+                                        logTerminal.scrollTop = logTerminal.scrollHeight;
+                                    }
+                                    
+                                    resolve({ status: 'error', message: 'server_restarted' });
+                                }
+                                return; // Skip this poll cycle
+                            }
+                            
+                            consecutive404Count = 0; // Reset on successful response
+                            const statusData = await statusResp.json();
+
+                            // Update Row Progress
+                            if (rowProgressBar) rowProgressBar.style.width = `${statusData.progress}%`;
+
+                            // Update Global Progress via helper
+                            updateGlobalProgress(statusData.progress);
+
+                            // Update Logs & Short Status
+                            if (statusData.logs && statusData.logs.length > 0) {
+                                // Get last log for short status
+                                const lastLog = statusData.logs[statusData.logs.length - 1];
+                                let shortStatus = "처리중";
+                                if (lastLog.includes("Scraping")) shortStatus = "수집";
+                                else if (lastLog.includes("OCR")) shortStatus = "OCR";
+                                else if (lastLog.includes("AI")) shortStatus = "AI";
+                                else if (lastLog.includes("Saving")) shortStatus = "저장";
+
+                                // 3. Real-time Timer
+                                const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+                                if (rowStatusText) rowStatusText.innerText = `${shortStatus} ${statusData.progress}% (${elapsed}s)`;
+
+                                // Append LATEST log to terminal if new
+                                if (logTerminal) {
+                                    const timeStr = new Date().toLocaleTimeString();
+                                    const lastLine = logTerminal.lastElementChild ? logTerminal.lastElementChild.innerText : "";
+                                    if (!lastLine.includes(lastLog)) {
+                                        const newLogDiv = document.createElement('div');
+                                        newLogDiv.innerText = `[${timeStr}] ${username}: ${lastLog}`;
+                                        logTerminal.appendChild(newLogDiv);
+                                        logTerminal.scrollTop = logTerminal.scrollHeight;
+                                    }
+                                }
+                            }
+
+                            if (statusData.status === 'completed' || statusData.status === 'error') {
+                                clearInterval(pollInterval);
+                                if (rowProgressBar) rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped'); // Stop animation
+                                
+                                // Remove from localStorage
+                                removeRunningTask(taskId);
+
+                                if (statusData.status === 'completed') {
+                                    if (rowProgressBar) {
+                                        rowProgressBar.classList.remove('bg-info');
+                                        rowProgressBar.classList.add('bg-success');
+                                        rowProgressBar.style.width = '100%';
+                                    }
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = "완료";
+                                        rowStatusText.style.color = "#28a745";
+                                    }
+
+                                    const res = statusData.result;
+                                    const savedCount = res.saved_count || 0;
+                                    const skipCount = res.skip_count || 0;
+                                    const scrapedCount = res.scraped_count || 0;
+                                    const details = res.details || [];
+
+                                    // Calculate status counts
+                                    const readyReviewCount = details.filter(d => d.db_status !== 'Saved' && d.db_status !== 'Duplicate' && !d.db_status?.startsWith('Skipped')).length;
+                                    const duplicateCount = details.filter(d => d.db_status === 'Duplicate').length;
+
+                                    // Stats Display
+                                    const stats = res.stats || {};
+                                    let timeCellHtml = "-";
+
+                                    if (stats.avg_scrape_sec) {
+                                        const totalSec = stats.total_scrape_sec + stats.total_analysis_sec;
+
+                                        // 2. Detailed Text Breakdown
+                                        timeCellHtml = `
+                                            <div style="display:flex; flex-direction:column; align-items:center;">
+                                                <span class="badge bg-dark border border-secondary text-light" style="font-size:0.9em; margin-bottom:4px;">
+                                                    ⏱ ${totalSec.toFixed(1)}s
+                                                </span>
+                                                <div style="font-size:0.75em; color:#aaa; line-height:1.2;">
+                                                    수집 ${stats.total_scrape_sec}s / 분석 ${stats.total_analysis_sec}s
+                                                </div>
+                                            </div>
+                                        `;
+                                    }
+
+                                    // Update the Time Column
+                                    const timeCell = document.getElementById(`time-cell-${index}`);
+                                    if (timeCell) timeCell.innerHTML = timeCellHtml;
+
+                                    if (savedCount > 0 || skipCount > 0) {
+                                        let resultHtml = '';
+                                        if (savedCount > 0) {
+                                            resultHtml += `<span class="badge bg-success">✅ ${savedCount}건 저장</span> `;
+                                        }
+                                        if (skipCount > 0) {
+                                            resultHtml += `<span class="badge bg-secondary">⏭️ ${skipCount}건 skip</span>`;
+                                        }
+                                        resultDiv.innerHTML = resultHtml;
+                                        if (res.csv_path) {
+                                            resultDiv.innerHTML += ` <button class="btn btn-sm btn-outline-light ms-1" style="font-size:0.7em;" onclick="location.href='/load_result?csv_path=${encodeURIComponent(res.csv_path)}'">📑 검토</button>`;
+                                        }
+                                    } else if (readyReviewCount > 0) {
+                                        // Change status text to Review
+                                        if (rowStatusText) {
+                                            rowStatusText.innerText = "검토 대기";
+                                            rowStatusText.style.color = "#17a2b8";
+                                        }
+                                        // Store for review
+                                        if (!window.reviewDataStore) window.reviewDataStore = {};
+                                        window.reviewDataStore[index] = details;
+
+                                        resultDiv.innerHTML = `<button class="btn btn-sm btn-info text-white" onclick="openReviewModal(${index})">🔎 검토 (${readyReviewCount})</button>`;
+                                    } else if (duplicateCount > 0) {
+                                        resultDiv.innerHTML = `<span class="badge bg-info text-dark">⚠️ DB중복 ${duplicateCount}</span>`;
+                                    } else if (scrapedCount === 0) {
+                                        resultDiv.innerHTML = `<span class="badge bg-secondary">게시물 없음</span>`;
+                                    } else {
+                                        resultDiv.innerHTML = `<span class="badge bg-warning text-dark">⚠️ 저장 0건</span>`;
+                                    }
+
+                                    // Resolve with success stats
+                                    resolve({
+                                        status: 'success',
+                                        savedCount: savedCount,
+                                        scrapedCount: scrapedCount,
+                                        details: details
+                                    });
+
+                                } else {
+                                    // Error
+                                    if (rowProgressBar) {
+                                        rowProgressBar.classList.remove('bg-info');
+                                        rowProgressBar.classList.add('bg-danger');
+                                    }
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = "실패";
+                                        rowStatusText.style.color = "red";
+                                    }
+                                    resultDiv.innerHTML = `<span class="badge bg-danger">❌ 오류</span>`;
+                                    if (logTerminal) logTerminal.innerHTML += `<div style="color:red">[Error] ${username}: ${statusData.error}</div>`;
+
+                                    // Resolve with error stats
+                                    resolve({ status: 'error', message: statusData.error });
+                                }
+                            }
+                        } catch (e) {
+                            console.error(e);
+                            // Keep polling on transient error? Or fail?
+                            // For safety, log but keep/break? 
+                            // Resolving error here might stop the loop prematurely if it's just a network blip.
+                            // But for now, let's catch critical poller failures.
+                        }
+                    }, 1000);
+                });
+
+            } catch (error) {
+                console.error(error);
+                if (resultDiv) resultDiv.innerHTML = `<span class="badge bg-danger">❌ 요청 실패</span>`;
+                if (rowStatusText) rowStatusText.innerText = "통신오류";
+                return Promise.resolve({ status: 'error', message: error.toString() });
+            }
+        }
+
+        // Initial slider values setup
+        document.addEventListener('DOMContentLoaded', () => {
+            const concurrencySlider = document.getElementById('concurrency-level');
+            const concurrencyValue = document.getElementById('concurrency-value');
+            if (concurrencySlider && concurrencyValue) {
+                // Set initial value display
+                concurrencyValue.innerText = concurrencySlider.value;
+                concurrencySlider.addEventListener('input', (e) => {
+                    concurrencyValue.innerText = e.target.value;
+                });
+            }
+
+            const scrapeLimitSlider = document.getElementById('scrape-limit');
+            const scrapeLimitValue = document.getElementById('scrape-limit-value');
+            if (scrapeLimitSlider && scrapeLimitValue) {
+                // Set initial value display
+                scrapeLimitValue.innerText = scrapeLimitSlider.value;
+                scrapeLimitSlider.addEventListener('input', (e) => {
+                    scrapeLimitValue.innerText = e.target.value;
+                });
+            }
+
+            const autoCollectSlider = document.getElementById('auto-collect-amount');
+            const autoCollectInput = document.getElementById('auto-collect-value');
+            if (autoCollectSlider && autoCollectInput) {
+                // Sync input with slider value on load
+                autoCollectInput.value = autoCollectSlider.value;
+                
+                // Slider -> Input sync
+                autoCollectSlider.addEventListener('input', (e) => {
+                    autoCollectInput.value = e.target.value;
+                });
+                
+                // Input -> Slider sync
+                autoCollectInput.addEventListener('input', (e) => {
+                    let val = parseInt(e.target.value) || 1;
+                    const max = parseInt(autoCollectSlider.max);
+                    const min = parseInt(autoCollectSlider.min);
+                    if (val > max) val = max;
+                    if (val < min) val = min;
+                    autoCollectSlider.value = val;
+                });
+                
+                // Validate on blur
+                autoCollectInput.addEventListener('blur', (e) => {
+                    let val = parseInt(e.target.value) || 1;
+                    const max = parseInt(autoCollectSlider.max);
+                    const min = parseInt(autoCollectSlider.min);
+                    if (val > max) val = max;
+                    if (val < min) val = min;
+                    e.target.value = val;
+                    autoCollectSlider.value = val;
+                });
+            }
+        });
+
+        let autoCollectRemainingCount = 0;
+        
+        // --- Running Tasks LocalStorage Management ---
+        function getRunningTasks() {
+            try {
+                const data = localStorage.getItem('batch_running_tasks');
+                return data ? JSON.parse(data) : {};
+            } catch (e) {
+                return {};
+            }
+        }
+        
+        function saveRunningTask(taskId, username, globalIndex, rowIndex) {
+            const tasks = getRunningTasks();
+            tasks[taskId] = {
+                taskId: taskId,
+                username: username,
+                globalIndex: globalIndex,
+                rowIndex: rowIndex,
+                startTime: Date.now()
+            };
+            localStorage.setItem('batch_running_tasks', JSON.stringify(tasks));
+        }
+        
+        function removeRunningTask(taskId) {
+            const tasks = getRunningTasks();
+            delete tasks[taskId];
+            localStorage.setItem('batch_running_tasks', JSON.stringify(tasks));
+        }
+        
+        function clearAllRunningTasks() {
+            localStorage.removeItem('batch_running_tasks');
+        }
+        
+        // --- Batch Results LocalStorage Management (for page navigation recovery) ---
+        function saveBatchResult(result) {
+            try {
+                const data = localStorage.getItem('batchResults');
+                const results = data ? JSON.parse(data) : [];
+                results.push(result);
+                localStorage.setItem('batchResults', JSON.stringify(results));
+            } catch (e) {
+                console.error('[BatchResults] Failed to save:', e);
+            }
+        }
+        
+        function clearBatchResults() {
+            localStorage.removeItem('batchResults');
+        }
+        
+        function getBatchResults() {
+            try {
+                const data = localStorage.getItem('batchResults');
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+        
+        // --- Server Restart Detection on Page Load ---
+        async function checkServerRestartAndCleanup() {
+            const runningTasks = getRunningTasks();
+            const taskIds = Object.keys(runningTasks);
+            
+            if (taskIds.length === 0) return; // No running tasks
+            
+            // Check if any running task returns 404 (server restarted)
+            let serverRestarted = false;
+            try {
+                const firstTaskId = taskIds[0];
+                const response = await fetch(`/api/task_status/${firstTaskId}`);
+                if (response.status === 404) {
+                    serverRestarted = true;
+                }
+            } catch (e) {
+                console.error('Failed to check task status:', e);
+            }
+            
+            if (serverRestarted) {
+                console.log('[Server Restart] Detected stale tasks, cleaning up...');
+                
+                // Show notification to user
+                const term = document.getElementById('log-terminal');
+                const dashboard = document.getElementById('progress-dashboard');
+                
+                if (dashboard) dashboard.style.display = 'block';
+                if (term) {
+                    term.innerHTML = `<div style="color: #ff9800;">⚠️ 서버가 재시작되어 진행 중이던 ${taskIds.length}개 작업이 유실되었습니다.</div>
+                                      <div style="color: #00bcd4;">ℹ️ 이미 수집된 계정은 유지됩니다. 자동 수집을 다시 시작하면 미수집 계정부터 이어서 진행됩니다.</div>`;
+                }
+                
+                // Clean up localStorage
+                clearAllRunningTasks();
+                clearBatchResults();
+                
+                // End batch session on server
+                try {
+                    await fetch('/api/batch_session', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'end' })
+                    });
+                } catch (e) {}
+                
+                // Reset UI
+                resetBatchUI();
+            }
+        }
+        
+        // Run check on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServerRestartAndCleanup();
+        });
+
+        async function startAutoCollect() {
+            if (isProcessing) return;
+
+            const totalToCollect = parseInt(document.getElementById('auto-collect-amount').value) || 50;
+            const concurrency = parseInt(document.getElementById('concurrency-level').value) || 1;
+            const scrapeLimit = parseInt(document.getElementById('scrape-limit').value) || 1;
+
+            // Fetch page-specific collection status from API
+            let pageStatus = { 
+                total: 0, collected: 0, page_total: 0, page_collected: 0, page_uncollected: 0,
+                first_uncollected_on_page: 0, first_uncollected_global_on_page: 0
+            };
+            try {
+                const statusRes = await fetch(`/api/batch_collection_status?page=${currentPage}&limit=50`);
+                pageStatus = await statusRes.json();
+            } catch (e) {
+                console.error('Failed to fetch collection status:', e);
+            }
+            
+            const { 
+                total: totalAccounts, 
+                collected: globalCollected,
+                page_total: pageTotal,
+                page_collected: pageCollected,
+                page_uncollected: pageUncollected,
+                first_uncollected_on_page: firstUncollectedOnPage,
+                first_uncollected_global_on_page: firstUncollectedGlobalOnPage
+            } = pageStatus;
+            
+            // Calculate page offset for display (e.g., page 2 starts at 51)
+            const pageOffset = (currentPage - 1) * 50;
+            
+            let confirmMessage = '';
+            let skipCount = 0;
+            
+            if (pageUncollected === 0 && pageTotal > 0) {
+                // All accounts on current page already collected
+                const reCollect = await pomfsConfirm(`현재 페이지의 모든 계정(${pageTotal}개)이 이미 수집되었습니다.\n\n다시 수집하시겠습니까?`);
+                if (!reCollect) return;
+                skipCount = 0;
+                confirmMessage = null;
+            } else if (pageCollected > 0 && pageUncollected > 0) {
+                // Some accounts on current page already collected
+                const globalStartNum = firstUncollectedGlobalOnPage;
+                const actualToCollect = Math.min(totalToCollect, pageUncollected + (totalPages - currentPage) * 50);
+                confirmMessage = `이미 ${globalCollected}개의 계정이 수집되어 있습니다.\n\n현재 페이지에서 미수집 계정 ${pageUncollected}개\n${globalStartNum}번부터 자동 수집을 시작할까요?\n(수집 예정: 최대 ${actualToCollect}개, 게시물: ${scrapeLimit}개, 동시작업: ${concurrency}개)`;
+                skipCount = firstUncollectedOnPage - 1; // 0-based skip count
+            } else {
+                // No accounts collected yet on this page
+                confirmMessage = `총 ${totalToCollect}개의 계정을 자동 수집합니다.\n(게시물: ${scrapeLimit}개, 동시작업: ${concurrency}개)\n\n50개씩 순차적으로 처리됩니다.\n진행하시겠습니까?`;
+                skipCount = 0;
+            }
+            
+            if (confirmMessage) {
+                const confirmed = await pomfsConfirm(confirmMessage);
+                if (!confirmed) return;
+            }
+            
+            // Store the skip count for use in processing
+            window.skipAlreadyCollected = skipCount;
+
+            isProcessing = true;
+            stopRequested = false;
+            autoCollectRemainingCount = totalToCollect;
+
+            // Clear previous batch results before starting new batch
+            clearBatchResults();
+
+            // Save settings to localStorage for page navigation persistence
+            localStorage.setItem('batch_total_to_collect', totalToCollect);
+            localStorage.setItem('batch_concurrency', concurrency);
+            localStorage.setItem('batch_scrape_limit', scrapeLimit);
+            localStorage.setItem('batch_start_page', currentPage);
+
+            // Start batch session (for page navigation persistence)
+            try {
+                await fetch('/api/batch_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'start',
+                        page: currentPage,
+                        total_accounts: totalToCollect
+                    })
+                });
+            } catch (e) {
+                console.error('[Session] Failed to start session:', e);
+            }
+
+            // UI Setup
+            document.getElementById('btn-start-auto').style.display = 'none';
+            const stopBtn = document.getElementById('btn-stop-all');
+            stopBtn.style.display = 'inline-block';
+            stopBtn.innerText = "⏹️ 중지";
+            stopBtn.disabled = false;
+
+            // Show progress counter
+            document.getElementById('auto-collect-progress').style.display = 'block';
+            document.getElementById('remaining-count').innerText = autoCollectRemainingCount;
+
+            const dashboard = document.getElementById('progress-dashboard');
+            dashboard.style.display = 'block';
+
+            const term = document.getElementById('log-terminal');
+            term.innerHTML += `<div style="color: #ffff00; margin-top: 10px; border-top: 1px dashed #555; padding-top: 5px;">=== 자동 수집 시작 (총 ${totalToCollect}개, 동시: ${concurrency}) ===</div>`;
+            term.scrollTop = term.scrollHeight;
+
+            globalTotalTasks = totalToCollect;
+            globalCompletedTasks = 0;
+            updateGlobalProgress(0);
+
+            const allBatchResults = [];
+            const startTime = Date.now();
+            let processedCount = 0;
+            let pageNum = currentPage;
+
+            term.innerHTML += `<div style="color: #00bcd4;">[현재 ${currentPage}페이지부터 시작, 총 ${totalToCollect}개 수집 예정]</div>`;
+            term.scrollTop = term.scrollHeight;
+
+            // For first page, skip already collected accounts
+            const skipOnFirstPage = window.skipAlreadyCollected || 0;
+            let isFirstPageProcessed = false;
+            
+            while (processedCount < totalToCollect && pageNum <= totalPages && !stopRequested) {
+                const remainingToCollect = totalToCollect - processedCount;
+                
+                term.innerHTML += `<div style="color: #00bcd4;">[페이지 ${pageNum}] 로드 중... (남은 수집 대상: ${remainingToCollect}개)</div>`;
+                term.scrollTop = term.scrollHeight;
+
+                try {
+                    const response = await fetch(`/api/batch_accounts?page=${pageNum}&limit=50`);
+                    const pageAccounts = await response.json();
+
+                    if (!pageAccounts || pageAccounts.length === 0) {
+                        term.innerHTML += `<div style="color: #ff9800;">[페이지 ${pageNum}] 계정 없음, 종료</div>`;
+                        break;
+                    }
+                    
+                    // Fetch collection stats for this page's accounts
+                    const pageUsernames = pageAccounts.map(a => a.userName || a.username).filter(Boolean);
+                    let pageCollectionStats = {};
+                    if (pageUsernames.length > 0) {
+                        try {
+                            const statsRes = await fetch('/api/collection_stats', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ usernames: pageUsernames })
+                            });
+                            if (statsRes.ok) {
+                                const statsData = await statsRes.json();
+                                // Validate response is not an error object
+                                if (statsData && !statsData.error) {
+                                    pageCollectionStats = statsData;
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Failed to fetch page collection stats:', e);
+                        }
+                    }
+                    // Merge into global collectionStats
+                    Object.assign(collectionStats, pageCollectionStats);
+
+                    // Skip already collected accounts on first page only
+                    let startIndex = 0;
+                    if (pageNum === currentPage && !isFirstPageProcessed && skipOnFirstPage > 0) {
+                        startIndex = skipOnFirstPage;
+                        if (startIndex > 0) {
+                            term.innerHTML += `<div style="color: #888;">[페이지 ${pageNum}] 이미 수집된 ${startIndex}개 계정 건너뜀</div>`;
+                            term.scrollTop = term.scrollHeight;
+                        }
+                        isFirstPageProcessed = true;
+                    }
+                    
+                    const availableAccounts = pageAccounts.slice(startIndex);
+                    const accountsToProcess = availableAccounts.slice(0, Math.min(availableAccounts.length, remainingToCollect));
+
+                    let pageIndex = 0;
+                    const pool = [];
+                    
+                    // Calculate row index offset for UI updates (considering skipped accounts)
+                    const rowIndexOffset = startIndex;
+
+                    async function worker() {
+                        while (pageIndex < accountsToProcess.length && !stopRequested) {
+                            const i = pageIndex++;
+                            const account = accountsToProcess[i];
+                            const username = account.userName || account.username;
+                            
+                            // Use correct row index for UI updates (on current page, add offset for skipped accounts)
+                            const rowIndex = (pageNum === currentPage) ? (i + rowIndexOffset) : i;
+                            
+                            // Check if already collected - skip if so
+                            if (collectionStats[username] && collectionStats[username].post_count > 0) {
+                                const skipPostCount = collectionStats[username].post_count;
+                                term.innerHTML += `<div style="color: #888;">[스킵] ${username} - 이미 수집됨 (${skipPostCount}개)</div>`;
+                                term.scrollTop = term.scrollHeight;
+                                
+                                // Update UI row to show already collected
+                                if (pageNum === currentPage) {
+                                    const statusCell = document.querySelector(`#account-row-${rowIndex} .status-cell`);
+                                    if (statusCell) {
+                                        statusCell.innerHTML = '<span class="badge bg-secondary">이미 수집됨</span>';
+                                    }
+                                }
+                                
+                                // Record skip result for consistency
+                                const skipResult = { 
+                                    status: 'skipped', 
+                                    username: username,
+                                    skipReason: 'already_collected',
+                                    message: `이미 수집됨 (${skipPostCount}개)`, 
+                                    time: 0, 
+                                    savedCount: 0, 
+                                    scrapedCount: 0,
+                                    skipCount: 0
+                                };
+                                allBatchResults.push(skipResult);
+                                saveBatchResult(skipResult);
+                                
+                                // Count as processed but don't actually scrape
+                                globalCompletedTasks++;
+                                autoCollectRemainingCount--;
+                                document.getElementById('remaining-count').innerText = autoCollectRemainingCount;
+                                updateGlobalProgress(0);
+                                
+                                // Update session completed count
+                                fetch('/api/batch_session', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        action: 'update',
+                                        completed_count: globalCompletedTasks
+                                    })
+                                }).catch(() => {});
+                                
+                                continue;
+                            }
+
+                            try {
+                                const result = await processSingleByUsername(username, rowIndex);
+                                allBatchResults.push(result);
+                                // Save to localStorage for page navigation recovery
+                                saveBatchResult(result);
+                            } catch (e) {
+                                const errorResult = { status: 'error', username: username, message: e.toString(), time: 0, savedCount: 0, scrapedCount: 0, skipCount: 0 };
+                                allBatchResults.push(errorResult);
+                                saveBatchResult(errorResult);
+                            }
+
+                            globalCompletedTasks++;
+                            autoCollectRemainingCount--;
+                            document.getElementById('remaining-count').innerText = autoCollectRemainingCount;
+                            updateGlobalProgress(0);
+                            
+                            // Update session completed count after increment
+                            fetch('/api/batch_session', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    action: 'update',
+                                    completed_count: globalCompletedTasks
+                                })
+                            }).catch(() => {});
+                        }
+                    }
+
+                    for (let w = 0; w < concurrency; w++) {
+                        pool.push(worker());
+                    }
+
+                    await Promise.all(pool);
+                    processedCount += accountsToProcess.length;
+
+                    term.innerHTML += `<div style="color: #4caf50;">[페이지 ${pageNum}] 완료 (누적: ${processedCount}개)</div>`;
+                    term.scrollTop = term.scrollHeight;
+
+                } catch (e) {
+                    term.innerHTML += `<div style="color: #f44336;">[페이지 ${pageNum}] 오류: ${e.message}</div>`;
+                    term.scrollTop = term.scrollHeight;
+                }
+                
+                pageNum++;
+            }
+
+            // Done
+            isProcessing = false;
+            document.getElementById('btn-start-auto').style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+            document.getElementById('auto-collect-progress').style.display = 'none';
+
+            // Complete batch session
+            try {
+                await fetch('/api/batch_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: stopRequested ? 'stop' : 'complete'
+                    })
+                });
+            } catch (e) {
+                console.error('[Session] Failed to complete session:', e);
+            }
+            
+            // Clear localStorage settings on completion
+            localStorage.removeItem('batch_total_to_collect');
+            localStorage.removeItem('batch_concurrency');
+            localStorage.removeItem('batch_scrape_limit');
+            localStorage.removeItem('batch_start_page');
+            clearAllRunningTasks();
+
+            term.innerHTML += `<div style="color: #0f0; margin-top: 10px;">=== 자동 수집 완료 (총 ${allBatchResults.length}건 처리) ===</div>`;
+            term.scrollTop = term.scrollHeight;
+
+            if (!stopRequested) {
+                const totalDuration = (Date.now() - startTime) / 1000;
+                showBatchSummaryReport(totalDuration, allBatchResults);
+                // Clear batch results from localStorage after showing report
+                clearBatchResults();
+            } else {
+                alert("작업이 중지되었습니다.");
+                clearBatchResults();
+            }
+        }
+
+        async function processSingleByUsername(username, globalIndex) {
+            const limitVal = document.getElementById('scrape-limit').value || 1;
+            const term = document.getElementById('log-terminal');
+            const startTime = Date.now();
+
+            const rowIndex = accountsData.findIndex(a => (a.userName || a.username) === username);
+            const rowProgressBar = rowIndex >= 0 ? document.getElementById(`progress-bar-${rowIndex}`) : null;
+            const rowStatusText = rowIndex >= 0 ? document.getElementById(`status-text-${rowIndex}`) : null;
+            const resultDiv = rowIndex >= 0 ? document.getElementById(`result-${rowIndex}`) : null;
+            const timeCell = rowIndex >= 0 ? document.getElementById(`time-cell-${rowIndex}`) : null;
+
+            if (rowProgressBar) {
+                rowProgressBar.classList.remove('bg-info', 'bg-success', 'bg-danger');
+                rowProgressBar.classList.add('bg-success', 'progress-bar-animated', 'progress-bar-striped');
+                rowProgressBar.style.width = '0%';
+            }
+            if (rowStatusText) {
+                rowStatusText.innerText = "시작...";
+                rowStatusText.style.color = "#fff";
+            }
+            if (resultDiv) {
+                resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>';
+            }
+
+            term.innerHTML += `<div style="color: #fff; margin-top: 2px;">▶ [${globalIndex + 1}] <strong>@${username}</strong> 수집 시작...</div>`;
+            term.scrollTop = term.scrollHeight;
+
+            try {
+                const startResponse = await fetch('/api/auto_process_async', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        venue_name: null,
+                        instagram_id: username,
+                        limit: parseInt(limitVal)
+                    })
+                });
+
+                if (!startResponse.ok) throw new Error("API Error");
+                const startData = await startResponse.json();
+
+                if (!startData.success) {
+                    throw new Error(startData.error || "Unknown Error");
+                }
+
+                const taskId = startData.task_id;
+                let lastLogMessage = "";
+
+                // Register task_id immediately on task creation
+                fetch('/api/batch_session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update',
+                        task_id: taskId
+                    })
+                }).catch(() => {});
+                
+                // Save running task to localStorage for page navigation persistence
+                saveRunningTask(taskId, username, globalIndex, rowIndex);
+
+                return new Promise((resolve) => {
+                    let resolved = false;
+                    
+                    const timeoutId = setTimeout(() => {
+                        if (resolved) return;
+                        resolved = true;
+                        clearInterval(pollInterval);
+                        term.innerHTML += `<div style="color: #ff9800;">⏱️ [${globalIndex + 1}] @${username} 타임아웃</div>`;
+                        term.scrollTop = term.scrollHeight;
+                        resolve({ status: 'timeout', username: username, task_id: taskId });
+                    }, 300000);
+                    
+                    let consecutive404Count = 0;
+                    const MAX_404_COUNT = 3;
+                    
+                    const pollInterval = setInterval(async () => {
+                        if (resolved) return;
+                        try {
+                            const statusResp = await fetch(`/api/task_status/${taskId}`);
+                            
+                            // Handle 404 error (server restarted, task lost)
+                            if (statusResp.status === 404) {
+                                consecutive404Count++;
+                                if (consecutive404Count >= MAX_404_COUNT) {
+                                    if (resolved) return;
+                                    resolved = true;
+                                    clearInterval(pollInterval);
+                                    clearTimeout(timeoutId);
+                                    removeRunningTask(taskId);
+                                    
+                                    const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                                    
+                                    if (rowProgressBar) {
+                                        rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                                        rowProgressBar.classList.add('bg-warning');
+                                    }
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = "서버 재시작";
+                                        rowStatusText.style.color = "#ff9800";
+                                    }
+                                    if (resultDiv) {
+                                        resultDiv.innerHTML = `<span class="badge bg-warning text-dark">⚠️ 서버 재시작됨</span>`;
+                                    }
+                                    term.innerHTML += `<div style="color: #ff9800;">⚠️ [${globalIndex + 1}] @${username} 서버 재시작으로 작업 유실 (${totalElapsed}s)</div>`;
+                                    term.scrollTop = term.scrollHeight;
+                                    
+                                    resolve({ 
+                                        status: 'error', 
+                                        username: username, 
+                                        message: 'server_restarted',
+                                        task_id: taskId
+                                    });
+                                }
+                                return; // Skip this poll cycle
+                            }
+                            
+                            consecutive404Count = 0; // Reset on successful response
+                            const statusData = await statusResp.json();
+
+                            if (rowProgressBar) rowProgressBar.style.width = `${statusData.progress || 0}%`;
+
+                            if (statusData.logs && statusData.logs.length > 0) {
+                                const lastLog = statusData.logs[statusData.logs.length - 1];
+                                
+                                if (lastLog !== lastLogMessage) {
+                                    lastLogMessage = lastLog;
+                                    const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+                                    
+                                    let logColor = "#aaa";
+                                    let emoji = "📡";
+                                    let shortStatus = "처리중";
+                                    if (lastLog.includes("Apify") || lastLog.includes("Scraping") || lastLog.includes("수집")) {
+                                        logColor = "#00bcd4"; emoji = "📡"; shortStatus = "수집";
+                                    } else if (lastLog.includes("OCR") || lastLog.includes("분석") || lastLog.includes("AI")) {
+                                        logColor = "#ff9800"; emoji = "🔍"; shortStatus = "분석";
+                                    } else if (lastLog.includes("Saving") || lastLog.includes("저장")) {
+                                        logColor = "#4caf50"; emoji = "💾"; shortStatus = "저장";
+                                    } else if (lastLog.includes("다운로드") || lastLog.includes("이미지")) {
+                                        logColor = "#9c27b0"; emoji = "🖼️"; shortStatus = "다운로드";
+                                    }
+
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = `${shortStatus} ${statusData.progress || 0}% (${elapsed}s)`;
+                                    }
+
+                                    term.innerHTML += `<div style="color: ${logColor};">${emoji} [${globalIndex + 1}] @${username} (${elapsed}s): ${lastLog}</div>`;
+                                    term.scrollTop = term.scrollHeight;
+                                }
+                            }
+
+                            if (statusData.status === 'completed' || statusData.status === 'error') {
+                                if (resolved) return;
+                                resolved = true;
+                                clearInterval(pollInterval);
+                                clearTimeout(timeoutId);
+                                const totalElapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+
+                                if (rowProgressBar) {
+                                    rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                                    rowProgressBar.style.width = '100%';
+                                }
+
+                                if (statusData.status === 'completed') {
+                                    const res = statusData.result || {};
+                                    const savedCount = res.saved_count || 0;
+                                    const skipCount = res.skip_count || 0;
+                                    const scrapedCount = res.scraped_count || 0;
+                                    const details = res.details || [];
+                                    const readyReviewCount = details.filter(d => d.db_status !== 'Saved' && d.db_status !== 'Duplicate' && !d.db_status?.startsWith('Skipped')).length;
+
+                                    if (rowProgressBar) rowProgressBar.classList.add('bg-success');
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = "완료";
+                                        rowStatusText.style.color = "#28a745";
+                                    }
+                                    if (timeCell) {
+                                        timeCell.innerHTML = `<span class="badge bg-dark border text-light">⏱ ${totalElapsed}s</span>`;
+                                    }
+
+                                    if (resultDiv) {
+                                        if (savedCount > 0 || skipCount > 0) {
+                                            let resultHtml = '';
+                                            if (savedCount > 0) {
+                                                resultHtml += `<span class="badge bg-success">✅ ${savedCount}건 저장</span> `;
+                                            }
+                                            if (skipCount > 0) {
+                                                resultHtml += `<span class="badge bg-secondary">⏭️ ${skipCount}건 skip</span>`;
+                                            }
+                                            resultDiv.innerHTML = resultHtml;
+                                        } else if (readyReviewCount > 0) {
+                                            window.reviewDataStore = window.reviewDataStore || {};
+                                            window.reviewDataStore[rowIndex] = details;
+                                            resultDiv.innerHTML = `<span class="badge bg-info">🔎 ${readyReviewCount}건</span> <button class="btn btn-sm btn-outline-info" onclick="openReviewModal(${rowIndex})">검토</button>`;
+                                            if (rowStatusText) {
+                                                rowStatusText.innerText = "검토 대기";
+                                                rowStatusText.style.color = "#17a2b8";
+                                            }
+                                        } else if (scrapedCount === 0) {
+                                            resultDiv.innerHTML = `<span class="badge bg-secondary">⚪ 게시물 없음</span>`;
+                                            if (rowStatusText) rowStatusText.innerText = "게시물 없음";
+                                        } else {
+                                            resultDiv.innerHTML = `<span class="badge bg-warning">⚠️ 추출 실패</span>`;
+                                        }
+                                    }
+
+                                    term.innerHTML += `<div style="color: #4caf50;">✅ [${globalIndex + 1}] @${username} 완료 (${totalElapsed}s) - 수집: ${scrapedCount}개, 저장: ${savedCount}개, skip: ${skipCount}개</div>`;
+                                } else {
+                                    if (rowProgressBar) rowProgressBar.classList.add('bg-danger');
+                                    if (rowStatusText) {
+                                        rowStatusText.innerText = "오류";
+                                        rowStatusText.style.color = "#dc3545";
+                                    }
+                                    if (resultDiv) {
+                                        resultDiv.innerHTML = `<span class="badge bg-danger">❌ 오류</span>`;
+                                    }
+                                    term.innerHTML += `<div style="color: #f44336;">❌ [${globalIndex + 1}] @${username} 오류 (${totalElapsed}s): ${statusData.error || 'Unknown'}</div>`;
+                                }
+                                term.scrollTop = term.scrollHeight;
+                                
+                                // Remove completed task from localStorage
+                                removeRunningTask(taskId);
+
+                                resolve({ 
+                                    status: statusData.status === 'completed' ? 'success' : (statusData.status || 'error'), 
+                                    username: username, 
+                                    results: statusData.result?.details || [],
+                                    savedCount: statusData.result?.saved_count || 0,
+                                    scrapedCount: statusData.result?.scraped_count || 0,
+                                    skipCount: statusData.result?.skip_count || 0,
+                                    task_id: taskId
+                                });
+                            }
+                        } catch (e) {
+                            console.error(e);
+                        }
+                    }, 1000);
+                });
+
+            } catch (error) {
+                term.innerHTML += `<div style="color: #f44336;">❌ [${globalIndex + 1}] @${username} 요청 실패: ${error.message}</div>`;
+                term.scrollTop = term.scrollHeight;
+                return { status: 'error', username: username, message: error.toString() };
+            }
+        }
+
+        async function processAllOnPage() {
+            if (isProcessing) return;
+
+            // Collect all rows to process
+            const rows = document.querySelectorAll('tbody tr');
+            if (rows.length === 0) {
+                alert("수집할 계정이 없습니다.");
+                return;
+            }
+
+            const concurrency = parseInt(document.getElementById('concurrency-level').value) || 3;
+            if (!confirm(`총 ${rows.length}개의 계정을 병렬 처리합니다. (동시작업: ${concurrency}개)\n진행하시겠습니까?`)) {
+                return;
+            }
+
+            isProcessing = true;
+            stopRequested = false;
+
+            // UI Setup
+            document.getElementById('btn-start-all').style.display = 'none';
+            const stopBtn = document.getElementById('btn-stop-all');
+            stopBtn.style.display = 'inline-block';
+            stopBtn.innerText = "⏹️ 중지";
+            stopBtn.disabled = false;
+
+            const dashboard = document.getElementById('progress-dashboard');
+            dashboard.style.display = 'block';
+
+            // Log Header
+            const term = document.getElementById('log-terminal');
+            const timeStr = new Date().toLocaleTimeString();
+            term.innerHTML += `<div style="color: #ffff00; margin-top: 10px; border-top: 1px dashed #555; padding-top: 5px;">=== 배치 작업 시작 (동시: ${concurrency}) ===</div>`;
+            term.scrollTop = term.scrollHeight;
+
+            // Global Init
+            globalTotalTasks = rows.length;
+            globalCompletedTasks = 0;
+            updateGlobalProgress(0);
+
+            // Local Results Capture
+            const allBatchResults = [];
+            const startTime = Date.now();
+
+            // Concurrent Processing Logic
+            let currentIndex = 0;
+            const pool = [];
+
+            async function worker() {
+                while (currentIndex < rows.length && !stopRequested) {
+                    const i = currentIndex++;
+                    const username = accountsData[i].userName || accountsData[i].username;
+
+                    try {
+                        const result = await processSingle(username, i);
+                        allBatchResults.push(result);
+                    } catch (e) {
+                        allBatchResults.push({ status: 'error', message: e.toString() });
+                    }
+
+                    globalCompletedTasks++;
+                    updateGlobalProgress(0);
+                }
+            }
+
+            // Spawn workers
+            for (let w = 0; w < concurrency; w++) {
+                pool.push(worker());
+            }
+
+            // Wait for all workers
+            await Promise.all(pool);
+
+            // Done
+            isProcessing = false;
+            document.getElementById('btn-start-all').style.display = 'inline-block';
+            stopBtn.style.display = 'none';
+
+            term.innerHTML += `<div style="color: #0f0; margin-top: 10px;">=== 모든 작업 완료 (집계된 결과: ${allBatchResults.length}건) ===</div>`;
+            term.scrollTop = term.scrollHeight;
+
+            if (!stopRequested) {
+                // Show Summary Report
+                const totalDuration = (Date.now() - startTime) / 1000;
+                showBatchSummaryReport(totalDuration, allBatchResults);
+            } else {
+                alert("작업이 중지되었습니다.");
+            }
+        }
+
+        // --- Review Modal Logic ---
+        // --- Review Modal Logic (Enhanced) ---
+        // Track saved review items per row
+        window.savedReviewItems = window.savedReviewItems || {};
+        
+        function updateRowReviewStatus(rowIndex, itemIndex) {
+            // Initialize tracking for this row if needed
+            if (!window.savedReviewItems[rowIndex]) {
+                window.savedReviewItems[rowIndex] = new Set();
+            }
+            window.savedReviewItems[rowIndex].add(itemIndex);
+            
+            const data = window.reviewDataStore[rowIndex];
+            const totalItems = data ? data.length : 0;
+            const savedItems = window.savedReviewItems[rowIndex].size;
+            
+            // If all items are saved, update the main row button
+            if (savedItems >= totalItems) {
+                const resultDiv = document.getElementById(`result-${rowIndex}`);
+                if (resultDiv) {
+                    resultDiv.innerHTML = `<span class="badge bg-success"><i class="bi bi-check-circle-fill"></i> 검토 완료</span>`;
+                }
+                const rowStatusText = document.getElementById(`status-text-${rowIndex}`);
+                if (rowStatusText) {
+                    rowStatusText.innerText = "검토 완료";
+                    rowStatusText.style.color = "#28a745";
+                }
+            } else {
+                // Partial progress - update button to show remaining
+                const remaining = totalItems - savedItems;
+                const resultDiv = document.getElementById(`result-${rowIndex}`);
+                if (resultDiv) {
+                    resultDiv.innerHTML = `<button class="btn btn-sm btn-info text-white" onclick="openReviewModal(${rowIndex})">🔎 검토 (${remaining}/${totalItems})</button>`;
+                }
+            }
+        }
+        
+        function openReviewModal(index) {
+            const data = window.reviewDataStore[index];
+            if (!data || data.length === 0) {
+                alert("검토할 데이터가 없습니다.");
+                return;
+            }
+
+            const modalBody = document.getElementById('review-modal-body');
+            modalBody.innerHTML = "";
+
+            data.forEach((item, idx) => {
+                const datesStr = (item.dates_found && item.dates_found.length > 0) ? item.dates_found.join(", ") : "날짜 없음";
+                const venueStr = item.inferred_venue || "장소 없음";
+                const locationStr = item.inferred_location || "";
+                const artistStr = item.inferred_artist || "아티스트 없음";
+                const eventName = item.event_name || item.title || "";
+
+                // Color Logic
+                const dateColor = (datesStr !== "날짜 없음") ? "#28a745" : "#6c757d";
+                const venueColor = (venueStr !== "장소 없음") ? "#007bff" : "#6c757d";
+                const artistColor = (artistStr !== "아티스트 없음") ? "#6f42c1" : "#6c757d";
+
+                // Image Handling
+                let imageHtml = "";
+                if (item.image_path) {
+                    imageHtml = `
+                        <img src="/load_image?path=${encodeURIComponent(item.image_path)}" class="img-fluid rounded mb-2" style="max-height: 300px; width: auto; display: block;" alt="Post Image">
+                        <div style="font-size:0.7em; color:#aaa; word-break:break-all;">Path: ${item.image_path}</div>
+                    `;
+                } else if (item.image_url) {
+                    imageHtml = `<img src="${item.image_url}" class="img-fluid rounded mb-2" style="max-height: 300px;">`;
+                } else {
+                    imageHtml = `<div class="p-3 mb-2 bg-dark text-center text-muted border rounded border-secondary">이미지 없음 (No Path)</div>`;
+                }
+
+                const card = document.createElement('div');
+                card.className = "card mb-3 bg-secondary text-white";
+                card.innerHTML = `
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                ${imageHtml}
+                                <div style="font-size:0.8em; color:#ccc; word-break:break-all;">
+                                    ${item.filename || 'No Filename'}
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <h5 class="card-title text-info">${eventName}</h5>
+                                <div class="mb-2">
+                                    <span class="badge" style="background-color:${dateColor}">📅 ${datesStr}</span>
+                                    <span class="badge" style="background-color:${venueColor}">📍 ${venueStr}</span>
+                                    <span class="badge" style="background-color:${artistColor}">🎤 ${artistStr}</span>
+                                </div>
+                                ${locationStr ? `<div class="mb-2" style="font-size:0.85em; color:#aaa;">🏠 주소: ${locationStr}</div>` : ''}
+                                <div class="accordion" id="accordionReview${idx}">
+                                     <div class="accordion-item bg-dark text-white border-secondary">
+                                        <h2 class="accordion-header" id="heading${idx}">
+                                          <button class="accordion-button collapsed bg-dark text-white shadow-none" type="button" data-bs-toggle="collapse" data-bs-target="#collapse${idx}">
+                                            📜 본문 및 분석 내용 (Caption & Logic)
+                                          </button>
+                                        </h2>
+                                        <div id="collapse${idx}" class="accordion-collapse collapse" data-bs-parent="#accordionReview${idx}">
+                                          <div class="accordion-body" style="white-space: pre-wrap; font-size: 0.85em; max-height: 200px; overflow-y: auto; color:#e0e0e0;">
+${item.caption}
+                                          </div>
+                                        </div>
+                                     </div>
+                                </div>
+                                <div class="mt-3 text-end">
+                                    ${window.savedReviewItems[index] && window.savedReviewItems[index].has(idx) 
+                                        ? `<button class="btn btn-success" disabled>✅ 저장 완료</button>`
+                                        : `<button class="btn btn-primary" onclick='saveReviewItem(${index}, ${idx}, this)'>💾 DB 저장 (Save)</button>`}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                modalBody.appendChild(card);
+            });
+
+            const modal = new bootstrap.Modal(document.getElementById('reviewModal'));
+            modal.show();
+        }
+
+        async function saveReviewItem(rowIndex, itemIndex, btnElement) {
+            const item = window.reviewDataStore[rowIndex][itemIndex];
+
+            // Construct payload
+            const payload = {
+                venue_id: 'NEW',
+                new_venue: item.inferred_venue,
+                event_location: item.inferred_location || '',
+                artist_id: 'NEW',
+                new_artist: item.inferred_artist,
+                event_name: item.event_name || `${item.inferred_artist} Live`,
+                event_date: item.dates_found[0],
+                content: (item.caption || "") + "\n[Reviewed Manual Save]",
+                filename: item.filename,
+                image_path: item.image_path,
+                shortcode: item.shortcode || ''
+            };
+
+            btnElement.disabled = true;
+            btnElement.innerText = "저장 중...";
+
+            try {
+                let successCount = 0;
+                // If multiple dates, save each
+                const datesToSave = (item.dates_found && item.dates_found.length > 0) ? item.dates_found : [null];
+
+                for (const d of datesToSave) {
+                    if (!d) continue;
+                    const singlePayload = { ...payload, event_date: d };
+
+                    const resp = await fetch('/api/save_event_manual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(singlePayload)
+                    });
+                    const res = await resp.json();
+                    if (res.success) successCount++;
+                }
+
+                if (successCount > 0) {
+                    btnElement.className = "btn btn-success";
+                    btnElement.innerText = "✅ 저장 완료";
+                    
+                    // Update main UI row status - mark review button as completed
+                    updateRowReviewStatus(rowIndex, itemIndex);
+                } else {
+                    alert("저장 실패");
+                    btnElement.innerText = "❌ 실패";
+                    btnElement.disabled = false;
+                }
+            } catch (e) {
+                console.error(e);
+                alert("통신 오류");
+                btnElement.disabled = false;
+            }
+        }
+    </script>
+
+    <!-- Review Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="reviewModalLabel">수집 데이터 검토</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="review-modal-body">
+                    <!-- Content will be injected via JS -->
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Batch Summary Modal -->
+    <div class="modal fade" id="batchSummaryModal" tabindex="-1" aria-labelledby="batchSummaryModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content bg-dark text-white border-light">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="batchSummaryModalLabel">🎉 배치 작업 결과 리포트 (Batch Report)</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-center mb-4">
+                        <h2 class="display-6 fw-bold text-success">작업 완료!</h2>
+                        <p class="lead text-light">
+                            총 소요 시간: <span id="summary-total-time" class="fw-bold text-warning">00:00</span>
+                        </p>
+                    </div>
+
+                    <div class="row text-center mb-3">
+                        <div class="col-6 col-md-3 mb-2">
+                            <div class="card bg-secondary text-white border-0 shadow-sm h-100">
+                                <div class="card-body py-2">
+                                    <h3 class="fw-bold mb-0" id="summary-total-count">0</h3>
+                                    <small class="text-light">총 작업 계정</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3 mb-2">
+                            <div class="card bg-success text-white border-0 shadow-sm h-100">
+                                <div class="card-body py-2">
+                                    <h3 class="fw-bold mb-0" id="summary-success-count">0</h3>
+                                    <small class="text-white">성공 (Success)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3 mb-2">
+                            <div class="card bg-warning text-dark border-0 shadow-sm h-100">
+                                <div class="card-body py-2">
+                                    <h3 class="fw-bold mb-0" id="summary-skip-count">0</h3>
+                                    <small class="text-dark">스킵 (Skipped)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3 mb-2">
+                            <div class="card bg-danger text-white border-0 shadow-sm h-100">
+                                <div class="card-body py-2">
+                                    <h3 class="fw-bold mb-0" id="summary-fail-count">0</h3>
+                                    <small class="text-white">실패 (Fail)</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center mb-3">
+                        <div class="col-6">
+                            <div class="card bg-info text-dark border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <h3 class="fw-bold mb-0" id="summary-saved-count">0</h3>
+                                    <small class="text-dark">저장된 공연</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-primary text-white border-0 shadow-sm">
+                                <div class="card-body py-2">
+                                    <h3 class="fw-bold mb-0" id="summary-post-skip-count">0</h3>
+                                    <small class="text-white">게시물 스킵</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Skip Reasons Section -->
+                    <div id="skip-reasons-section" class="mb-3" style="display: none;">
+                        <div class="card bg-dark border-warning">
+                            <div class="card-header bg-warning text-dark py-2">
+                                <strong>⏭️ 스킵 사유 상세</strong>
+                            </div>
+                            <div class="card-body py-2">
+                                <ul class="list-unstyled mb-0 small" id="skip-reasons-list">
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-dark border-secondary d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>📊 데이터 수집 성과:</strong>
+                            총 <span id="summary-scraped-total" class="text-primary fw-bold"
+                                style="font-size: 1.2em;">0</span>개의 게시물을 분석했습니다.
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">평균 처리 속도</small><br>
+                            <span id="summary-avg-time" class="fw-bold text-dark" style="font-size: 1.2em;">0.0s</span>
+                            / 계정
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-primary w-100" data-bs-dismiss="modal">확인 (Close)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div class="modal fade" id="pomfsConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">🎵 POMFS Dev 알림</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="pomfs-confirm-body" style="white-space: pre-line;">
+                    <!-- Message will be inserted here -->
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="pomfs-confirm-cancel">취소</button>
+                    <button type="button" class="btn btn-success" id="pomfs-confirm-ok">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Custom confirm function using modal instead of browser confirm
+        function pomfsConfirm(message) {
+            return new Promise((resolve) => {
+                const modal = new bootstrap.Modal(document.getElementById('pomfsConfirmModal'));
+                document.getElementById('pomfs-confirm-body').innerText = message;
+                
+                const okBtn = document.getElementById('pomfs-confirm-ok');
+                const cancelBtn = document.getElementById('pomfs-confirm-cancel');
+                
+                function cleanup() {
+                    okBtn.removeEventListener('click', onOk);
+                    cancelBtn.removeEventListener('click', onCancel);
+                    document.getElementById('pomfsConfirmModal').removeEventListener('hidden.bs.modal', onHidden);
+                }
+                
+                function onOk() {
+                    cleanup();
+                    modal.hide();
+                    resolve(true);
+                }
+                
+                function onCancel() {
+                    cleanup();
+                    modal.hide();
+                    resolve(false);
+                }
+                
+                function onHidden() {
+                    cleanup();
+                    resolve(false);
+                }
+                
+                okBtn.addEventListener('click', onOk);
+                cancelBtn.addEventListener('click', onCancel);
+                document.getElementById('pomfsConfirmModal').addEventListener('hidden.bs.modal', onHidden);
+                
+                modal.show();
+            });
+        }
+    </script>
+
+    <script>
+        function showBatchSummaryReport(totalSeconds, results) {
+            // Calculate Stats
+            const totalCount = results.length;
+            const successCount = results.filter(r => r.status === 'success').length;
+            const skipCount = results.filter(r => r.status === 'skipped').length;
+            const failCount = results.filter(r => r.status === 'error').length;
+
+            const totalSaved = results.reduce((acc, r) => acc + (r.savedCount || 0), 0);
+            const totalScraped = results.reduce((acc, r) => acc + (r.scrapedCount || 0), 0);
+            const totalPostSkip = results.reduce((acc, r) => acc + (r.skipCount || 0), 0);
+
+            // Calculate skip reasons breakdown
+            const skipReasons = {};
+            results.filter(r => r.status === 'skipped').forEach(r => {
+                const reason = r.skipReason || 'unknown';
+                const reasonLabel = {
+                    'already_collected': '이미 수집됨',
+                    'no_posts': '게시물 없음',
+                    'private_account': '비공개 계정',
+                    'unknown': '기타'
+                }[reason] || reason;
+                
+                if (!skipReasons[reasonLabel]) {
+                    skipReasons[reasonLabel] = { count: 0, accounts: [] };
+                }
+                skipReasons[reasonLabel].count++;
+                if (r.username) {
+                    skipReasons[reasonLabel].accounts.push(r.username);
+                }
+            });
+
+            const avgTime = totalCount > 0 ? (totalSeconds / totalCount).toFixed(1) : 0;
+
+            // Format Duration
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = Math.floor(totalSeconds % 60);
+            const timeStr = mins > 0 ? `${mins}분 ${secs}초` : `${secs}초`;
+
+            // Update DOM
+            document.getElementById('summary-total-time').innerText = timeStr;
+            document.getElementById('summary-total-count').innerText = totalCount;
+            document.getElementById('summary-success-count').innerText = successCount;
+            document.getElementById('summary-skip-count').innerText = skipCount;
+            document.getElementById('summary-fail-count').innerText = failCount;
+            document.getElementById('summary-saved-count').innerText = totalSaved;
+            document.getElementById('summary-post-skip-count').innerText = totalPostSkip;
+            document.getElementById('summary-scraped-total').innerText = totalScraped;
+            document.getElementById('summary-avg-time').innerText = `${avgTime}s`;
+
+            // Update skip reasons section
+            const skipReasonsSection = document.getElementById('skip-reasons-section');
+            const skipReasonsList = document.getElementById('skip-reasons-list');
+            
+            if (skipCount > 0 && Object.keys(skipReasons).length > 0) {
+                skipReasonsSection.style.display = 'block';
+                skipReasonsList.innerHTML = '';
+                
+                for (const [reason, data] of Object.entries(skipReasons)) {
+                    const li = document.createElement('li');
+                    li.className = 'mb-1';
+                    
+                    // Show first few accounts as examples
+                    const examples = data.accounts.slice(0, 3).map(a => `@${a}`).join(', ');
+                    const moreCount = data.accounts.length > 3 ? ` 외 ${data.accounts.length - 3}개` : '';
+                    
+                    li.innerHTML = `<span class="badge bg-warning text-dark me-2">${data.count}</span> 
+                        <strong>${reason}</strong>
+                        <span class="text-muted ms-2">${examples}${moreCount}</span>`;
+                    skipReasonsList.appendChild(li);
+                }
+            } else {
+                skipReasonsSection.style.display = 'none';
+            }
+
+            // Show Modal
+            const modal = new bootstrap.Modal(document.getElementById('batchSummaryModal'));
+            modal.show();
+        }
+
+        // --- Session Persistence ---
+        // Check for active batch session on page load
+        async function checkActiveSession() {
+            try {
+                const response = await fetch('/api/batch_session/active');
+                const session = await response.json();
+                
+                // Check if session just completed (localStorage has tasks but session is done)
+                const runningTasks = getRunningTasks();
+                const taskEntries = Object.values(runningTasks);
+                
+                if (taskEntries.length > 0 && (!session.active || session.status === 'completed')) {
+                    console.log('[Session] Session completed but localStorage has tasks. Checking task status...');
+                    
+                    // Show dashboard and check remaining tasks
+                    const dashboard = document.getElementById('progress-dashboard');
+                    if (dashboard) dashboard.style.display = 'block';
+                    
+                    // Check each task's final status
+                    let allCompleted = true;
+                    const taskResults = [];
+                    
+                    for (const taskInfo of taskEntries) {
+                        try {
+                            const taskResp = await fetch(`/api/task_status/${taskInfo.taskId}`);
+                            const taskData = await taskResp.json();
+                            
+                            if (taskData.status === 'completed') {
+                                const res = taskData.result || {};
+                                taskResults.push({
+                                    status: 'success',
+                                    time: (Date.now() - taskInfo.startTime) / 1000,
+                                    savedCount: res.saved_count || 0,
+                                    scrapedCount: res.scraped_count || 0,
+                                    skipCount: res.skip_count || 0
+                                });
+                                removeRunningTask(taskInfo.taskId);
+                            } else if (taskData.status === 'error') {
+                                taskResults.push({ status: 'error', time: 0, savedCount: 0, scrapedCount: 0, skipCount: 0 });
+                                removeRunningTask(taskInfo.taskId);
+                            } else {
+                                allCompleted = false;
+                            }
+                        } catch (e) {
+                            console.error('[Session] Error checking task:', taskInfo.taskId, e);
+                        }
+                    }
+                    
+                    if (allCompleted && taskResults.length > 0) {
+                        // All tasks finished - show completion
+                        const term = document.getElementById('log-terminal');
+                        if (term) {
+                            term.innerHTML = `<div style="color: #0f0;">=== 배치 수집 완료 (복귀 시 감지) ===</div>`;
+                            term.innerHTML += `<div style="color: #aaa;">총 ${taskResults.length}개 작업 완료</div>`;
+                        }
+                        
+                        globalCompletedTasks = session.completed_count || taskResults.length;
+                        globalTotalTasks = session.total_accounts || taskResults.length;
+                        updateGlobalProgress(100);
+                        
+                        isProcessing = false;
+                        const startBtn = document.getElementById('btn-start-auto');
+                        const stopBtn = document.getElementById('btn-stop-all');
+                        if (startBtn) startBtn.style.display = 'inline-block';
+                        if (stopBtn) stopBtn.style.display = 'none';
+                        
+                        // Retrieve all batch results from localStorage if available
+                        const savedBatchResults = localStorage.getItem('batchResults');
+                        if (savedBatchResults) {
+                            const allResults = JSON.parse(savedBatchResults);
+                            showBatchSummaryReport(allResults);
+                            localStorage.removeItem('batchResults');
+                        }
+                        return;
+                    } else if (!allCompleted) {
+                        // Some tasks still running - resume polling
+                        console.log('[Session] Some tasks still running, resuming polling...');
+                        isProcessing = true;
+                        const startBtn = document.getElementById('btn-start-auto');
+                        const stopBtn = document.getElementById('btn-stop-all');
+                        if (startBtn) startBtn.style.display = 'none';
+                        if (stopBtn) stopBtn.style.display = 'inline-block';
+                        
+                        const remainingTasks = Object.values(getRunningTasks());
+                        if (remainingTasks.length > 0) {
+                            resumeTaskPollingWithUI(remainingTasks);
+                        }
+                        return;
+                    }
+                }
+                
+                if (session.active && session.status === 'running') {
+                    // Restore UI state
+                    console.log('[Session] Active batch session found:', session);
+                    
+                    // Restore settings from localStorage
+                    const savedTotalToCollect = localStorage.getItem('batch_total_to_collect');
+                    const savedConcurrency = localStorage.getItem('batch_concurrency');
+                    const savedScrapeLimit = localStorage.getItem('batch_scrape_limit');
+                    
+                    if (savedTotalToCollect) {
+                        const autoCollectSlider = document.getElementById('auto-collect-amount');
+                        const autoCollectInput = document.getElementById('auto-collect-value');
+                        if (autoCollectSlider) autoCollectSlider.value = savedTotalToCollect;
+                        if (autoCollectInput) autoCollectInput.value = savedTotalToCollect;
+                        console.log('[Session] Restored total_to_collect:', savedTotalToCollect);
+                    }
+                    if (savedConcurrency) {
+                        const concurrencySlider = document.getElementById('concurrency-level');
+                        const concurrencyValue = document.getElementById('concurrency-value');
+                        if (concurrencySlider) concurrencySlider.value = savedConcurrency;
+                        if (concurrencyValue) concurrencyValue.innerText = savedConcurrency;
+                    }
+                    if (savedScrapeLimit) {
+                        const scrapeLimitSlider = document.getElementById('scrape-limit');
+                        const scrapeLimitValue = document.getElementById('scrape-limit-value');
+                        if (scrapeLimitSlider) scrapeLimitSlider.value = savedScrapeLimit;
+                        if (scrapeLimitValue) scrapeLimitValue.innerText = savedScrapeLimit;
+                    }
+                    
+                    // Show progress dashboard
+                    const dashboard = document.getElementById('progress-dashboard');
+                    if (dashboard) dashboard.style.display = 'block';
+                    
+                    // Update global progress - use saved total if available
+                    globalTotalTasks = savedTotalToCollect ? parseInt(savedTotalToCollect) : session.total_accounts;
+                    globalCompletedTasks = session.completed_count;
+                    updateGlobalProgress(0);
+                    
+                    // Show running indicator
+                    const term = document.getElementById('log-terminal');
+                    if (term) {
+                        term.innerHTML = `<div style="color: #ffff00;">⚠️ 수집 진행 중... (${session.start_page}페이지부터 시작됨)</div>`;
+                        term.innerHTML += `<div style="color: #00bcd4;">진행: ${session.completed_count}/${session.total_accounts} 완료</div>`;
+                        
+                        // Add recent logs
+                        if (session.logs && session.logs.length > 0) {
+                            session.logs.forEach(log => {
+                                term.innerHTML += `<div>${log}</div>`;
+                            });
+                        }
+                        term.scrollTop = term.scrollHeight;
+                    }
+                    
+                    // Show stop button, hide start button
+                    const startBtn = document.getElementById('btn-start-auto');
+                    const stopBtn = document.getElementById('btn-stop-all');
+                    if (startBtn) startBtn.style.display = 'none';
+                    if (stopBtn) {
+                        stopBtn.style.display = 'inline-block';
+                        stopBtn.innerText = "⏹️ 중지";
+                    }
+                    
+                    // Mark as processing
+                    isProcessing = true;
+                    
+                    // Resume polling for running tasks from localStorage (more reliable)
+                    const runningTasks = getRunningTasks();
+                    const taskEntries = Object.values(runningTasks);
+                    
+                    if (taskEntries.length > 0) {
+                        console.log('[Session] Resuming tasks from localStorage:', taskEntries.length);
+                        resumeTaskPollingWithUI(taskEntries);
+                    } else if (session.running_tasks && session.running_tasks.length > 0) {
+                        resumeTaskPolling(session.running_tasks);
+                    } else if (session.task_ids && session.task_ids.length > 0) {
+                        const tasksToResume = session.task_ids.map(id => ({ task_id: id }));
+                        resumeTaskPolling(tasksToResume);
+                    }
+                    
+                    // Start continuous session status polling
+                    startSessionStatusPolling();
+                }
+            } catch (e) {
+                console.error('[Session] Error checking active session:', e);
+            }
+        }
+        
+        // Resume polling for running tasks
+        function resumeTaskPolling(runningTasks) {
+            const term = document.getElementById('log-terminal');
+            if (term) {
+                term.innerHTML += `<div style="color: #00bcd4;">=== 폴링 재개: ${runningTasks.length}개 작업 ===</div>`;
+            }
+            runningTasks.forEach(task => {
+                pollTaskStatusWithLogs(task.task_id);
+            });
+        }
+        
+        // Resume polling with UI updates for rows
+        function resumeTaskPollingWithUI(taskEntries) {
+            const term = document.getElementById('log-terminal');
+            if (term) {
+                term.innerHTML += `<div style="color: #00bcd4;">=== 폴링 재개: ${taskEntries.length}개 작업 (UI 복원) ===</div>`;
+                term.scrollTop = term.scrollHeight;
+            }
+            
+            taskEntries.forEach(taskInfo => {
+                const { taskId, username, globalIndex, rowIndex, startTime } = taskInfo;
+                
+                // Restore row UI to "processing" state
+                const rowProgressBar = document.getElementById(`progress-bar-${rowIndex}`);
+                const rowStatusText = document.getElementById(`status-text-${rowIndex}`);
+                const resultDiv = document.getElementById(`result-${rowIndex}`);
+                
+                if (rowProgressBar) {
+                    rowProgressBar.classList.remove('bg-info', 'bg-success', 'bg-danger');
+                    rowProgressBar.classList.add('bg-success', 'progress-bar-animated', 'progress-bar-striped');
+                }
+                if (rowStatusText) {
+                    rowStatusText.innerText = "진행 중...";
+                    rowStatusText.style.color = "#fff";
+                }
+                if (resultDiv) {
+                    resultDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>';
+                }
+                
+                // Start polling for this task with row updates
+                pollTaskStatusWithRowUI(taskId, username, globalIndex, rowIndex, startTime);
+            });
+        }
+        
+        // Poll task status with row UI updates
+        function pollTaskStatusWithRowUI(taskId, username, globalIndex, rowIndex, taskStartTime) {
+            const term = document.getElementById('log-terminal');
+            const rowProgressBar = document.getElementById(`progress-bar-${rowIndex}`);
+            const rowStatusText = document.getElementById(`status-text-${rowIndex}`);
+            const resultDiv = document.getElementById(`result-${rowIndex}`);
+            const timeCell = document.getElementById(`time-cell-${rowIndex}`);
+            
+            let lastLogIndex = 0;
+            let errorCount = 0;
+            const MAX_ERRORS = 10;  // Max consecutive errors before stopping
+            const MAX_TIMEOUT = 600000;  // 10 minutes max timeout
+            
+            const pollInterval = setInterval(async () => {
+                // Timeout check - if task running too long, mark as timeout
+                const elapsedMs = Date.now() - taskStartTime;
+                if (elapsedMs > MAX_TIMEOUT) {
+                    clearInterval(pollInterval);
+                    removeRunningTask(taskId);
+                    if (rowProgressBar) {
+                        rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                        rowProgressBar.classList.add('bg-warning');
+                        rowProgressBar.style.width = '100%';
+                    }
+                    if (rowStatusText) {
+                        rowStatusText.innerText = "시간 초과";
+                        rowStatusText.style.color = "#ffc107";
+                    }
+                    if (resultDiv) {
+                        resultDiv.innerHTML = `<span class="badge bg-warning text-dark">⏱️ 시간 초과</span>`;
+                    }
+                    if (term) {
+                        term.innerHTML += `<div style="color: #ffc107;">⏱️ [${globalIndex + 1}] @${username} 시간 초과 (10분+)</div>`;
+                        term.scrollTop = term.scrollHeight;
+                    }
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/api/task_status/${taskId}`);
+                    const data = await response.json();
+                    
+                    // Update row progress bar
+                    if (rowProgressBar) {
+                        rowProgressBar.style.width = `${data.progress || 0}%`;
+                    }
+                    
+                    const elapsed = ((Date.now() - taskStartTime) / 1000).toFixed(0);
+                    let currentShortStatus = "처리중";
+                    
+                    // Display new logs
+                    if (term && data.logs && data.logs.length > lastLogIndex) {
+                        for (let i = lastLogIndex; i < data.logs.length; i++) {
+                            const log = data.logs[i];
+                            let logColor = "#aaa";
+                            let emoji = "📡";
+                            
+                            if (log.includes("Apify") || log.includes("Scraping") || log.includes("수집")) {
+                                logColor = "#00bcd4"; emoji = "📡"; currentShortStatus = "수집";
+                            } else if (log.includes("OCR") || log.includes("분석") || log.includes("AI")) {
+                                logColor = "#ff9800"; emoji = "🔍"; currentShortStatus = "분석";
+                            } else if (log.includes("Saving") || log.includes("저장")) {
+                                logColor = "#4caf50"; emoji = "💾"; currentShortStatus = "저장";
+                            } else if (log.includes("다운로드") || log.includes("이미지")) {
+                                logColor = "#9c27b0"; emoji = "🖼️"; currentShortStatus = "다운로드";
+                            }
+                            
+                            term.innerHTML += `<div style="color: ${logColor};">${emoji} [${globalIndex + 1}] @${username} (${elapsed}s): ${log}</div>`;
+                        }
+                        lastLogIndex = data.logs.length;
+                        term.scrollTop = term.scrollHeight;
+                    }
+                    
+                    // Always update row status with timer (even without new logs)
+                    if (rowStatusText) {
+                        rowStatusText.innerText = `${currentShortStatus} ${data.progress || 0}% (${elapsed}s)`;
+                    }
+                    
+                    // Update global progress
+                    updateGlobalProgress(data.progress || 0);
+                    
+                    if (data.status === 'completed' || data.status === 'error') {
+                        clearInterval(pollInterval);
+                        const totalElapsed = ((Date.now() - taskStartTime) / 1000).toFixed(1);
+                        
+                        // Remove from localStorage
+                        removeRunningTask(taskId);
+                        
+                        if (rowProgressBar) {
+                            rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                            rowProgressBar.style.width = '100%';
+                        }
+                        
+                        if (data.status === 'completed') {
+                            const res = data.result || {};
+                            const savedCount = res.saved_count || 0;
+                            const skipCount = res.skip_count || 0;
+                            const scrapedCount = res.scraped_count || 0;
+                            
+                            if (rowProgressBar) rowProgressBar.classList.add('bg-success');
+                            if (rowStatusText) {
+                                rowStatusText.innerText = "완료";
+                                rowStatusText.style.color = "#28a745";
+                            }
+                            if (timeCell) {
+                                timeCell.innerHTML = `<span class="badge bg-dark border text-light">⏱ ${totalElapsed}s</span>`;
+                            }
+                            if (resultDiv) {
+                                if (savedCount > 0 || skipCount > 0) {
+                                    let resultHtml = '';
+                                    if (savedCount > 0) resultHtml += `<span class="badge bg-success">✅ ${savedCount}건 저장</span> `;
+                                    if (skipCount > 0) resultHtml += `<span class="badge bg-secondary">⏭️ ${skipCount}건 skip</span>`;
+                                    resultDiv.innerHTML = resultHtml;
+                                } else if (scrapedCount === 0) {
+                                    resultDiv.innerHTML = `<span class="badge bg-secondary">⚪ 게시물 없음</span>`;
+                                } else {
+                                    resultDiv.innerHTML = `<span class="badge bg-warning">⚠️ 추출 실패</span>`;
+                                }
+                            }
+                            
+                            if (term) {
+                                term.innerHTML += `<div style="color: #4caf50;">✅ [${globalIndex + 1}] @${username} 완료 (${totalElapsed}s) - 수집: ${scrapedCount}개, 저장: ${savedCount}개, skip: ${skipCount}개</div>`;
+                                term.scrollTop = term.scrollHeight;
+                            }
+                        } else {
+                            if (rowProgressBar) rowProgressBar.classList.add('bg-danger');
+                            if (rowStatusText) {
+                                rowStatusText.innerText = "오류";
+                                rowStatusText.style.color = "#dc3545";
+                            }
+                            if (resultDiv) {
+                                resultDiv.innerHTML = `<span class="badge bg-danger">❌ 오류</span>`;
+                            }
+                            if (term) {
+                                term.innerHTML += `<div style="color: #f44336;">❌ [${globalIndex + 1}] @${username} 오류 (${totalElapsed}s): ${data.error || 'Unknown'}</div>`;
+                                term.scrollTop = term.scrollHeight;
+                            }
+                        }
+                        
+                        // Note: Don't increment globalCompletedTasks here for restored tasks
+                        // to avoid double-counting. The server session tracks completed_count.
+                        // Just update the progress display.
+                        updateGlobalProgress(0);
+                    }
+                    // Reset error count on successful response
+                    errorCount = 0;
+                } catch (e) {
+                    console.error('[Polling] Error:', e);
+                    errorCount++;
+                    
+                    // If too many consecutive errors, stop polling and mark as network error
+                    if (errorCount >= MAX_ERRORS) {
+                        clearInterval(pollInterval);
+                        removeRunningTask(taskId);
+                        const totalElapsed = ((Date.now() - taskStartTime) / 1000).toFixed(1);
+                        
+                        if (rowProgressBar) {
+                            rowProgressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                            rowProgressBar.classList.add('bg-warning');
+                            rowProgressBar.style.width = '100%';
+                        }
+                        if (rowStatusText) {
+                            rowStatusText.innerText = "연결 오류";
+                            rowStatusText.style.color = "#ffc107";
+                        }
+                        if (timeCell) {
+                            timeCell.innerHTML = `<span class="badge bg-warning text-dark">⚠️ ${totalElapsed}s</span>`;
+                        }
+                        if (resultDiv) {
+                            resultDiv.innerHTML = `<span class="badge bg-warning text-dark">⚠️ 연결 오류</span>`;
+                        }
+                        if (term) {
+                            term.innerHTML += `<div style="color: #ffc107;">⚠️ [${globalIndex + 1}] @${username} 네트워크 오류로 폴링 중단 (${totalElapsed}s)</div>`;
+                            term.scrollTop = term.scrollHeight;
+                        }
+                    }
+                }
+            }, 1000);
+        }
+        
+        // Poll task status with log updates
+        function pollTaskStatusWithLogs(taskId) {
+            const term = document.getElementById('log-terminal');
+            let lastLogIndex = 0;
+            
+            const pollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/task_status/${taskId}`);
+                    const data = await response.json();
+                    
+                    // Display new logs
+                    if (term && data.logs && data.logs.length > lastLogIndex) {
+                        for (let i = lastLogIndex; i < data.logs.length; i++) {
+                            const log = data.logs[i];
+                            let logColor = "#aaa";
+                            let emoji = "📡";
+                            
+                            if (log.includes("Apify") || log.includes("Scraping") || log.includes("수집")) {
+                                logColor = "#00bcd4"; emoji = "📡";
+                            } else if (log.includes("OCR") || log.includes("분석") || log.includes("AI")) {
+                                logColor = "#ff9800"; emoji = "🔍";
+                            } else if (log.includes("Saving") || log.includes("저장")) {
+                                logColor = "#4caf50"; emoji = "💾";
+                            } else if (log.includes("다운로드") || log.includes("이미지")) {
+                                logColor = "#9c27b0"; emoji = "🖼️";
+                            }
+                            
+                            term.innerHTML += `<div style="color: ${logColor};">${emoji} ${log}</div>`;
+                        }
+                        lastLogIndex = data.logs.length;
+                        term.scrollTop = term.scrollHeight;
+                    }
+                    
+                    // Update progress
+                    updateGlobalProgress(data.progress || 0);
+                    
+                    if (data.status === 'completed' || data.status === 'error') {
+                        clearInterval(pollInterval);
+                        
+                        if (data.status === 'completed') {
+                            const res = data.result || {};
+                            const savedCount = res.saved_count || 0;
+                            const skipCount = res.skip_count || 0;
+                            if (term) {
+                                term.innerHTML += `<div style="color: #4caf50;">✅ 작업 완료 - 저장: ${savedCount}개, skip: ${skipCount}개</div>`;
+                                term.scrollTop = term.scrollHeight;
+                            }
+                        } else {
+                            if (term) {
+                                term.innerHTML += `<div style="color: #f44336;">❌ 작업 오류: ${data.error || 'Unknown'}</div>`;
+                                term.scrollTop = term.scrollHeight;
+                            }
+                        }
+                        
+                        // Check if all tasks completed
+                        checkAllTasksCompleted();
+                    }
+                } catch (e) {
+                    console.error('[Poll] Error:', e);
+                }
+            }, 1000);
+        }
+        
+        // Continuous session status polling
+        let sessionPollInterval = null;
+        
+        function startSessionStatusPolling() {
+            if (sessionPollInterval) return; // Already polling
+            
+            sessionPollInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/batch_session/active');
+                    const session = await response.json();
+                    
+                    if (session.active && session.status === 'running') {
+                        // Update progress
+                        globalCompletedTasks = session.completed_count;
+                        globalTotalTasks = session.total_accounts;
+                        updateGlobalProgress(0);
+                        
+                        // Update remaining count
+                        const remainingEl = document.getElementById('remaining-count');
+                        if (remainingEl) {
+                            remainingEl.innerText = session.total_accounts - session.completed_count;
+                        }
+                    } else if (!session.active || session.status !== 'running') {
+                        // Session ended
+                        clearInterval(sessionPollInterval);
+                        sessionPollInterval = null;
+                        
+                        isProcessing = false;
+                        const startBtn = document.getElementById('btn-start-auto');
+                        const stopBtn = document.getElementById('btn-stop-all');
+                        if (startBtn) startBtn.style.display = 'inline-block';
+                        if (stopBtn) stopBtn.style.display = 'none';
+                        
+                        const term = document.getElementById('log-terminal');
+                        if (term && session.status === 'completed') {
+                            term.innerHTML += `<div style="color: #0f0; margin-top: 10px;">=== 배치 수집 완료 ===</div>`;
+                            term.scrollTop = term.scrollHeight;
+                        }
+                    }
+                } catch (e) {
+                    console.error('[SessionPoll] Error:', e);
+                }
+            }, 2000); // Poll every 2 seconds
+        }
+        
+        // Check if all tasks completed and reset UI
+        async function checkAllTasksCompleted() {
+            try {
+                const response = await fetch('/api/batch_session/active');
+                const session = await response.json();
+                
+                if (!session.active || session.status !== 'running' || 
+                    (session.running_tasks && session.running_tasks.length === 0 && 
+                     session.completed_count >= session.total_accounts)) {
+                    // All done
+                    isProcessing = false;
+                    const startBtn = document.getElementById('btn-start-auto');
+                    const stopBtn = document.getElementById('btn-stop-all');
+                    if (startBtn) startBtn.style.display = 'inline-block';
+                    if (stopBtn) stopBtn.style.display = 'none';
+                    
+                    const term = document.getElementById('log-terminal');
+                    if (term) {
+                        term.innerHTML += `<div style="color: #0f0; margin-top: 10px;">=== 모든 작업 완료 ===</div>`;
+                        term.scrollTop = term.scrollHeight;
+                    }
+                }
+            } catch (e) {
+                console.error('[Check] Error:', e);
+            }
+        }
+        
+        // Call on page load
+        document.addEventListener('DOMContentLoaded', checkActiveSession);
+    </script>
+    </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% include 'components/developer_log.html' %}
+</body>
+
+</html>

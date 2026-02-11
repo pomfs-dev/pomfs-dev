@@ -1,0 +1,16 @@
+Flask
+pandas
+openpyxl
+python-dotenv
+apify-client
+requests
+instagrapi
+psycopg2-binary
+selenium
+beautifulsoup4
+lxml
+mistralai
+undetected-chromedriver
+google-cloud-storage
+sift-stack-py
+markdown

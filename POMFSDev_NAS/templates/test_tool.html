@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 테스트 도구 - P.O.MFS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .section-card {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .section-title {
+            color: #39ff14;
+            font-size: 1.2em;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .image-thumb {
+            width: 100%;
+            aspect-ratio: 1;
+            object-fit: cover;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .image-thumb:hover {
+            border-color: #39ff14;
+        }
+        .image-thumb.selected {
+            border-color: #dc3545;
+            box-shadow: 0 0 10px rgba(220, 53, 69, 0.5);
+        }
+        .preview-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 12px;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #888;
+            font-size: 0.9em;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            background: #0d0d1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+        }
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #39ff14;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .btn-test {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-test:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+        .btn-test:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+        }
+        .btn-secondary:hover {
+            background: #444;
+        }
+        .result-box {
+            background: #0d0d1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        .country-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        .country-KR { background: rgba(0, 123, 255, 0.2); color: #58a6ff; }
+        .country-JP { background: rgba(220, 53, 69, 0.2); color: #ff6b6b; }
+        .country-US { background: rgba(32, 178, 170, 0.2); color: #20b2aa; }
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #888;
+            text-decoration: none;
+            margin-bottom: 20px;
+        }
+        .back-btn:hover {
+            color: #fff;
+        }
+        #log-output {
+            background: #000;
+            color: #39ff14;
+            font-family: monospace;
+            font-size: 0.85em;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .data-table th, .data-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #333;
+        }
+        .data-table th {
+            background: #0d0d1a;
+            color: #888;
+            font-weight: normal;
+        }
+        .data-table tr:hover {
+            background: rgba(57, 255, 20, 0.05);
+        }
+        .data-table input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-danger:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .btn-refresh {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .btn-refresh:hover {
+            background: #444;
+        }
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .action-bar .spacer {
+            flex: 1;
+        }
+        .count-badge {
+            background: #333;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            color: #888;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #555;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-box {
+            background: #1a1a2e;
+            border: 1px solid #dc3545;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-box h3 {
+            color: #dc3545;
+            margin-bottom: 15px;
+        }
+        .modal-box p {
+            color: #888;
+            margin-bottom: 20px;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <a href="/" class="back-btn" style="margin-bottom: 0;">← 대시보드로 돌아가기</a>
+            <a href="/reanalyze" class="btn-test" style="text-decoration: none; padding: 8px 16px; font-size: 0.9em;">🔄 이미지 재분석 페이지</a>
+        </div>
+        
+        <h1 style="color: #dc3545; margin-bottom: 30px;">🧪 테스트 도구</h1>
+        <p style="color: #888; margin-bottom: 30px;">
+            기존 scraped_data의 이미지를 활용하여 API 비용 없이 지도/캐러셀 표시를 테스트합니다.
+        </p>
+
+        <div class="section-card">
+            <div class="section-title">📁 1. 이미지 선택</div>
+            <div class="form-row" style="margin-bottom: 15px;">
+                <div class="form-group">
+                    <label>날짜 선택</label>
+                    <select id="dateSelect" onchange="loadAccounts()">
+                        <option value="">-- 날짜 선택 --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>계정 선택</label>
+                    <select id="accountSelect" onchange="loadImages()">
+                        <option value="">-- 계정 선택 --</option>
+                    </select>
+                </div>
+            </div>
+            <div id="accountEventInfo" style="display: none; padding: 10px; margin-bottom: 15px; background: #0d0d1a; border-radius: 8px; font-size: 0.9em;"></div>
+            <div class="image-grid" id="imageGrid"></div>
+            <div id="selectedPreview" style="text-align: center; display: none;">
+                <img id="previewImg" class="preview-image" src="" alt="Selected image">
+                <p style="color: #39ff14;" id="selectedPath"></p>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">📝 2. 이벤트 정보 입력</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>이벤트명 *</label>
+                    <input type="text" id="eventName" placeholder="TECHNO NIGHT Vol.3">
+                </div>
+                <div class="form-group">
+                    <label>장소명 *</label>
+                    <input type="text" id="eventVenue" placeholder="클럽 믹스">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>상세 주소</label>
+                <input type="text" id="eventLocation" placeholder="서울 강남구 역삼동 123-45">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>날짜 *</label>
+                    <input type="date" id="eventDate">
+                </div>
+                <div class="form-group">
+                    <label>시간</label>
+                    <input type="time" id="eventTime" value="22:00">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>국가 *</label>
+                    <select id="eventCountry">
+                        <option value="KR">🇰🇷 한국 (KR)</option>
+                        <option value="JP">🇯🇵 일본 (JP)</option>
+                        <option value="US">🇺🇸 미국 (US)</option>
+                        <option value="UK">🇬🇧 영국 (UK)</option>
+                        <option value="DE">🇩🇪 독일 (DE)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>아티스트 (쉼표로 구분)</label>
+                    <input type="text" id="artists" placeholder="DJ A, DJ B">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>위도 (Latitude)</label>
+                    <input type="number" step="any" id="latitude" placeholder="37.5012">
+                </div>
+                <div class="form-group">
+                    <label>경도 (Longitude)</label>
+                    <input type="number" step="any" id="longitude" placeholder="127.0396">
+                </div>
+            </div>
+            <button class="btn-secondary" onclick="fillSampleData('KR')" style="margin-right: 10px;">🇰🇷 한국 샘플</button>
+            <button class="btn-secondary" onclick="fillSampleData('JP')" style="margin-right: 10px;">🇯🇵 일본 샘플</button>
+            <button class="btn-secondary" onclick="fillSampleData('US')">🇺🇸 미국 샘플</button>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">🚀 3. 테스트 실행</div>
+            <button class="btn-test" id="uploadBtn" onclick="uploadAndSave()" disabled>
+                📤 GCS 업로드 + DB 저장
+            </button>
+            <div class="result-box" id="resultBox" style="display: none;">
+                <div id="log-output"></div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">📊 4. 테스트 데이터 관리</div>
+            <div class="action-bar">
+                <button class="btn-refresh" onclick="loadTestData()">🔄 새로고침</button>
+                <button class="btn-danger" onclick="showClearAllModal()">🗑️ 전체 초기화</button>
+                <button class="btn-danger" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>🗑️ 선택 삭제</button>
+                <div class="spacer"></div>
+                <span class="count-badge" id="totalCount">총 0개</span>
+                <span class="count-badge" id="selectedCount">선택: 0개</span>
+            </div>
+            <div id="dataTableContainer">
+                <div class="empty-state">🔄 새로고침 버튼을 눌러 테스트 데이터를 불러오세요</div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-title">🔄 5. 이미지 재분석</div>
+            <p style="color: #888; margin-bottom: 15px;">
+                scraped_data/ 폴더의 기존 이미지를 배치 재분석하여 Neon DB에 저장합니다.
+            </p>
+            
+            <div class="form-row" style="margin-bottom: 15px;">
+                <div>
+                    <button class="btn-secondary" id="reanalyzeScanBtn" onclick="scanForReanalysis()">📊 스캔</button>
+                    <button class="btn-test" id="reanalyzeStartBtn" onclick="startReanalysis()" disabled style="margin-left: 10px;">▶️ 재분석 시작</button>
+                </div>
+                <div>
+                    <label style="color: #888; font-size: 0.9em;">
+                        <input type="checkbox" id="reanalyzeSkipAnalyzed" checked> 이미 분석된 게시물 스킵
+                    </label>
+                </div>
+            </div>
+            
+            <div id="reanalyzeScanResults" class="result-box" style="display: none;">
+                <div id="reanalyzeStats"></div>
+            </div>
+            
+            <div id="reanalyzeProgressSection" style="display: none; margin-top: 15px;">
+                <div class="progress" style="height: 20px; background: #0d0d1a; border-radius: 8px;">
+                    <div id="reanalyzeProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         style="width: 0%; background: #39ff14; border-radius: 8px;">0%</div>
+                </div>
+                <div id="reanalyzeStatus" style="color: #888; margin-top: 10px;">준비 중...</div>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 15px;">
+                    <div style="background: #0d0d1a; padding: 10px; border-radius: 8px; text-align: center;">
+                        <div id="reanalyzeStatProcessed" style="font-size: 1.5em; color: #39ff14;">0</div>
+                        <small style="color: #888;">처리됨</small>
+                    </div>
+                    <div style="background: #0d0d1a; padding: 10px; border-radius: 8px; text-align: center;">
+                        <div id="reanalyzeStatEvents" style="font-size: 1.5em; color: #00ff00;">0</div>
+                        <small style="color: #888;">이벤트 감지</small>
+                    </div>
+                    <div style="background: #0d0d1a; padding: 10px; border-radius: 8px; text-align: center;">
+                        <div id="reanalyzeStatSkipped" style="font-size: 1.5em; color: #888;">0</div>
+                        <small style="color: #888;">스킵됨</small>
+                    </div>
+                    <div style="background: #0d0d1a; padding: 10px; border-radius: 8px; text-align: center;">
+                        <div id="reanalyzeStatErrors" style="font-size: 1.5em; color: #dc3545;">0</div>
+                        <small style="color: #888;">오류</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="clearAllModal">
+        <div class="modal-box">
+            <h3>⚠️ 전체 초기화</h3>
+            <p>모든 테스트 데이터(pomfs_ai 카테고리)가 삭제됩니다.<br>이 작업은 되돌릴 수 없습니다.</p>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="hideClearAllModal()">취소</button>
+                <button class="btn-danger" onclick="clearAllData()">삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="deleteSelectedModal">
+        <div class="modal-box">
+            <h3>⚠️ 선택 항목 삭제</h3>
+            <p id="deleteSelectedMessage">선택한 0개 이벤트를 삭제합니다.</p>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="hideDeleteSelectedModal()">취소</button>
+                <button class="btn-danger" onclick="confirmDeleteSelected()">삭제</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let foldersData = {};
+        let selectedImagePath = null;
+
+        document.addEventListener('DOMContentLoaded', loadFolders);
+
+        async function loadFolders() {
+            try {
+                const res = await fetch('/api/test/scraped_folders');
+                const data = await res.json();
+                if (data.success) {
+                    foldersData = data.folders;
+                    const dateSelect = document.getElementById('dateSelect');
+                    dateSelect.innerHTML = '<option value="">-- 날짜 선택 --</option>';
+                    data.dates.forEach(date => {
+                        dateSelect.innerHTML += `<option value="${date}">${date}</option>`;
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load folders:', e);
+            }
+        }
+
+        function loadAccounts() {
+            const date = document.getElementById('dateSelect').value;
+            const accountSelect = document.getElementById('accountSelect');
+            accountSelect.innerHTML = '<option value="">-- 계정 선택 --</option>';
+            document.getElementById('imageGrid').innerHTML = '';
+            
+            if (date && foldersData[date]) {
+                foldersData[date].forEach(account => {
+                    accountSelect.innerHTML += `<option value="${account}">${account}</option>`;
+                });
+            }
+        }
+
+        let imagesData = [];
+
+        async function loadImages() {
+            const date = document.getElementById('dateSelect').value;
+            const account = document.getElementById('accountSelect').value;
+            const grid = document.getElementById('imageGrid');
+            grid.innerHTML = '';
+            imagesData = [];
+            
+            if (!date || !account) return;
+            
+            try {
+                const [imagesRes, eventsRes] = await Promise.all([
+                    fetch(`/api/test/images/${date}/${account}`),
+                    fetch(`/api/test/account_events/${date}/${account}`)
+                ]);
+                
+                const imagesData_ = await imagesRes.json();
+                const eventsData = await eventsRes.json();
+                
+                if (imagesData_.success) {
+                    imagesData = imagesData_.images;
+                    imagesData_.images.forEach((img, idx) => {
+                        const imgEl = document.createElement('img');
+                        imgEl.src = '/' + img.path;
+                        imgEl.className = 'image-thumb';
+                        imgEl.onclick = () => selectImage(img.path, img.shortcode, imgEl);
+                        grid.appendChild(imgEl);
+                    });
+                }
+                
+                if (eventsData.success && eventsData.first_event) {
+                    autoFillFromEvent(eventsData.first_event);
+                    showAccountEventInfo(eventsData);
+                } else if (eventsData.success) {
+                    clearEventForm();
+                    showAccountEventInfo({ total: eventsData.total || 0, events_count: 0, message: 'DB에 분석된 이벤트 없음' });
+                } else {
+                    clearEventForm();
+                    showAccountEventInfo({ error: eventsData.error || 'API 오류' });
+                }
+            } catch (e) {
+                console.error('Failed to load images:', e);
+            }
+        }
+        
+        function clearEventForm() {
+            document.getElementById('eventName').value = '';
+            document.getElementById('eventVenue').value = '';
+            document.getElementById('eventLocation').value = '';
+            document.getElementById('eventDate').value = '';
+            document.getElementById('eventTime').value = '';
+            document.getElementById('eventCountry').value = 'KR';
+            document.getElementById('latitude').value = '';
+            document.getElementById('longitude').value = '';
+            document.getElementById('artists').value = '';
+        }
+        
+        function autoFillFromEvent(event) {
+            if (!event) {
+                clearEventForm();
+                return;
+            }
+            
+            document.getElementById('eventName').value = event.event_name || '';
+            document.getElementById('eventVenue').value = event.event_venue || '';
+            document.getElementById('eventLocation').value = event.event_location || '';
+            if (event.event_date) {
+                document.getElementById('eventDate').value = event.event_date;
+            } else {
+                document.getElementById('eventDate').value = '';
+            }
+            if (event.event_time) {
+                document.getElementById('eventTime').value = event.event_time;
+            } else {
+                document.getElementById('eventTime').value = '';
+            }
+            document.getElementById('eventCountry').value = event.event_country || 'KR';
+            if (event.latitude) {
+                document.getElementById('latitude').value = event.latitude;
+            }
+            if (event.longitude) {
+                document.getElementById('longitude').value = event.longitude;
+            }
+            if (event.artists && Array.isArray(event.artists)) {
+                document.getElementById('artists').value = event.artists.join(', ');
+            } else {
+                document.getElementById('artists').value = '';
+            }
+        }
+        
+        function showAccountEventInfo(data) {
+            const infoDiv = document.getElementById('accountEventInfo');
+            if (!infoDiv) return;
+            
+            if (data.error) {
+                infoDiv.innerHTML = `<span style="color: #dc3545;">❌ DB 조회 실패: ${data.error}</span>`;
+                infoDiv.style.display = 'block';
+            } else if (data.first_event) {
+                const eventName = data.first_event.event_name ? `"${data.first_event.event_name}"` : '이벤트';
+                infoDiv.innerHTML = `<span style="color: #39ff14;">✅ ${eventName} 자동 입력됨 (${data.events_count}개 이벤트 / ${data.total}개 게시물)</span>`;
+                infoDiv.style.display = 'block';
+            } else {
+                infoDiv.innerHTML = `<span style="color: #ffc107;">⚠️ ${data.message || 'DB에 분석된 이벤트 없음'} - 수동 입력 또는 재분석 필요</span>`;
+                infoDiv.style.display = 'block';
+            }
+        }
+
+        async function selectImage(path, shortcode, element) {
+            document.querySelectorAll('.image-thumb').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedImagePath = path;
+            
+            document.getElementById('selectedPreview').style.display = 'block';
+            document.getElementById('previewImg').src = '/' + path;
+            document.getElementById('selectedPath').textContent = `${path} (shortcode: ${shortcode})`;
+            document.getElementById('uploadBtn').disabled = false;
+            
+            await autoFillFromDB(shortcode);
+        }
+
+        async function autoFillFromDB(shortcode) {
+            try {
+                const res = await fetch(`/api/test/get_event_data/${shortcode}`);
+                const data = await res.json();
+                
+                if (data.success && data.data) {
+                    const d = data.data;
+                    document.getElementById('eventName').value = d.event_name || '';
+                    document.getElementById('eventVenue').value = d.event_venue || '';
+                    document.getElementById('eventLocation').value = d.event_location || d.formatted_address || '';
+                    if (d.event_date) {
+                        document.getElementById('eventDate').value = d.event_date;
+                    }
+                    if (d.event_time) {
+                        document.getElementById('eventTime').value = d.event_time;
+                    }
+                    document.getElementById('eventCountry').value = d.event_country || 'KR';
+                    if (d.latitude) document.getElementById('latitude').value = d.latitude;
+                    if (d.longitude) document.getElementById('longitude').value = d.longitude;
+                    if (d.artists && Array.isArray(d.artists)) {
+                        document.getElementById('artists').value = d.artists.join(', ');
+                    }
+                    
+                    showAutoFillNotice(true, d.event_name ? `"${d.event_name}" 데이터 로드 완료` : 'DB 데이터 로드 완료');
+                } else {
+                    showAutoFillNotice(false, 'DB에 분석 데이터 없음 - 수동 입력 필요');
+                }
+            } catch (e) {
+                console.error('Auto-fill error:', e);
+                showAutoFillNotice(false, 'DB 조회 실패');
+            }
+        }
+
+        function showAutoFillNotice(success, message) {
+            const path = document.getElementById('selectedPath');
+            const color = success ? '#39ff14' : '#ffc107';
+            const icon = success ? '✅' : '⚠️';
+            path.innerHTML += `<br><span style="color: ${color}; font-size: 0.9em;">${icon} ${message}</span>`;
+        }
+
+        async function fillSampleData(country) {
+            try {
+                const res = await fetch(`/api/test/country_samples?country=${country}&random=true`);
+                const data = await res.json();
+                
+                if (data.success && data.sample) {
+                    const s = data.sample;
+                    document.getElementById('eventName').value = s.event_name;
+                    document.getElementById('eventVenue').value = s.event_venue;
+                    document.getElementById('eventLocation').value = s.event_location;
+                    document.getElementById('latitude').value = s.latitude;
+                    document.getElementById('longitude').value = s.longitude;
+                    document.getElementById('artists').value = 'DJ Sample';
+                    document.getElementById('eventCountry').value = country;
+                    
+                    const nextWeek = new Date();
+                    nextWeek.setDate(nextWeek.getDate() + 7);
+                    document.getElementById('eventDate').value = nextWeek.toISOString().split('T')[0];
+                    
+                    showSampleNotice(country, s.event_venue);
+                }
+            } catch (e) {
+                console.error('Failed to load sample:', e);
+            }
+        }
+
+        function showSampleNotice(country, venue) {
+            const flags = { KR: '🇰🇷', JP: '🇯🇵', US: '🇺🇸' };
+            const notice = document.createElement('div');
+            notice.style.cssText = 'background: rgba(57,255,20,0.1); border: 1px solid #39ff14; padding: 10px; border-radius: 8px; margin-top: 10px; color: #39ff14; font-size: 0.9em;';
+            notice.innerHTML = `${flags[country]} ${country} 랜덤 샘플 로드: <strong>${venue}</strong>`;
+            
+            const existing = document.querySelector('.sample-notice');
+            if (existing) existing.remove();
+            notice.className = 'sample-notice';
+            
+            const sampleBtns = document.querySelector('.section-card:nth-child(2)');
+            sampleBtns.appendChild(notice);
+            
+            setTimeout(() => notice.remove(), 3000);
+        }
+
+        async function uploadAndSave() {
+            if (!selectedImagePath) {
+                alert('이미지를 먼저 선택해주세요.');
+                return;
+            }
+            
+            const eventName = document.getElementById('eventName').value;
+            const eventVenue = document.getElementById('eventVenue').value;
+            const eventDate = document.getElementById('eventDate').value;
+            
+            if (!eventName || !eventVenue || !eventDate) {
+                alert('이벤트명, 장소명, 날짜는 필수입니다.');
+                return;
+            }
+            
+            const btn = document.getElementById('uploadBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ 처리 중...';
+            
+            const resultBox = document.getElementById('resultBox');
+            const logOutput = document.getElementById('log-output');
+            resultBox.style.display = 'block';
+            logOutput.innerHTML = '[INFO] 테스트 시작...\n';
+            
+            const artistsInput = document.getElementById('artists').value;
+            const artists = artistsInput ? artistsInput.split(',').map(a => a.trim()) : [];
+            
+            const payload = {
+                image_path: selectedImagePath,
+                event_name: eventName,
+                event_venue: eventVenue,
+                event_location: document.getElementById('eventLocation').value,
+                event_date: eventDate,
+                event_time: document.getElementById('eventTime').value,
+                event_country: document.getElementById('eventCountry').value,
+                latitude: parseFloat(document.getElementById('latitude').value) || null,
+                longitude: parseFloat(document.getElementById('longitude').value) || null,
+                artists: artists
+            };
+            
+            logOutput.innerHTML += `[INFO] 이미지: ${selectedImagePath}\n`;
+            logOutput.innerHTML += `[INFO] 이벤트: ${eventName}\n`;
+            
+            try {
+                const res = await fetch('/api/test/upload_and_save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    logOutput.innerHTML += `[SUCCESS] GCS 업로드 완료: ${data.image_url}\n`;
+                    logOutput.innerHTML += `[SUCCESS] DB 저장 완료!\n`;
+                    logOutput.innerHTML += `\n✅ 테스트 완료! MusicFeedPlatform에서 확인하세요.\n`;
+                } else {
+                    logOutput.innerHTML += `[ERROR] ${data.error}\n`;
+                }
+            } catch (e) {
+                logOutput.innerHTML += `[ERROR] ${e.message}\n`;
+            }
+            
+            btn.disabled = false;
+            btn.textContent = '📤 GCS 업로드 + DB 저장';
+        }
+
+        let testDataEvents = [];
+        let selectedIds = new Set();
+
+        async function loadTestData() {
+            const container = document.getElementById('dataTableContainer');
+            container.innerHTML = '<div class="empty-state">⏳ 로딩 중...</div>';
+
+            try {
+                const res = await fetch('/api/test/list_test_data');
+                const data = await res.json();
+
+                if (data.success) {
+                    testDataEvents = data.events;
+                    selectedIds.clear();
+                    updateCounts();
+                    renderDataTable();
+                } else {
+                    container.innerHTML = `<div class="empty-state">❌ ${data.error}</div>`;
+                }
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state">❌ ${e.message}</div>`;
+            }
+        }
+
+        function renderDataTable() {
+            const container = document.getElementById('dataTableContainer');
+
+            if (testDataEvents.length === 0) {
+                container.innerHTML = '<div class="empty-state">테스트 데이터가 없습니다</div>';
+                return;
+            }
+
+            const countryFlags = { KR: '🇰🇷', JP: '🇯🇵', US: '🇺🇸', UK: '🇬🇧', DE: '🇩🇪' };
+            const allSelected = testDataEvents.length > 0 && selectedIds.size === testDataEvents.length;
+            const selectAllChecked = allSelected ? 'checked' : '';
+
+            let html = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="selectAll" ${selectAllChecked} onchange="toggleSelectAll()"></th>
+                            <th>ID</th>
+                            <th>이벤트명</th>
+                            <th>장소</th>
+                            <th>날짜</th>
+                            <th>국가</th>
+                            <th>생성일</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            testDataEvents.forEach(event => {
+                const eventDate = event.event_date ? new Date(event.event_date).toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' }) : '-';
+                const createdAt = event.created_at ? new Date(event.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '-';
+                const flag = countryFlags[event.event_country] || '';
+                const checked = selectedIds.has(event.id) ? 'checked' : '';
+
+                html += `
+                    <tr>
+                        <td><input type="checkbox" value="${event.id}" ${checked} onchange="toggleSelect(${event.id})"></td>
+                        <td style="color: #555;">${event.id}</td>
+                        <td>${event.event_name || '-'}</td>
+                        <td>${event.event_venue || '-'}</td>
+                        <td>${eventDate}</td>
+                        <td>${flag} ${event.event_country || '-'}</td>
+                        <td style="color: #555;">${createdAt}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        function toggleSelectAll() {
+            const selectAll = document.getElementById('selectAll');
+            if (selectAll.checked) {
+                testDataEvents.forEach(e => selectedIds.add(e.id));
+            } else {
+                selectedIds.clear();
+            }
+            updateCounts();
+            renderDataTable();
+        }
+
+        function toggleSelect(id) {
+            if (selectedIds.has(id)) {
+                selectedIds.delete(id);
+            } else {
+                selectedIds.add(id);
+            }
+            updateCounts();
+        }
+
+        function updateCounts() {
+            document.getElementById('totalCount').textContent = `총 ${testDataEvents.length}개`;
+            document.getElementById('selectedCount').textContent = `선택: ${selectedIds.size}개`;
+            document.getElementById('deleteSelectedBtn').disabled = selectedIds.size === 0;
+        }
+
+        function showClearAllModal() {
+            document.getElementById('clearAllModal').style.display = 'flex';
+        }
+
+        function hideClearAllModal() {
+            document.getElementById('clearAllModal').style.display = 'none';
+        }
+
+        async function clearAllData() {
+            hideClearAllModal();
+
+            try {
+                const res = await fetch('/api/test/clear_all', { method: 'POST' });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`${data.deleted}개 이벤트가 삭제되었습니다.`);
+                    loadTestData();
+                } else {
+                    alert(`삭제 실패: ${data.error}`);
+                }
+            } catch (e) {
+                alert(`오류: ${e.message}`);
+            }
+        }
+
+        function deleteSelected() {
+            if (selectedIds.size === 0) return;
+            document.getElementById('deleteSelectedMessage').textContent = `선택한 ${selectedIds.size}개 이벤트를 삭제합니다.`;
+            document.getElementById('deleteSelectedModal').style.display = 'flex';
+        }
+
+        function hideDeleteSelectedModal() {
+            document.getElementById('deleteSelectedModal').style.display = 'none';
+        }
+
+        async function confirmDeleteSelected() {
+            hideDeleteSelectedModal();
+
+            try {
+                const res = await fetch('/api/test/delete_selected', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ids: Array.from(selectedIds) })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    alert(`${data.deleted}개 이벤트가 삭제되었습니다.`);
+                    loadTestData();
+                } else {
+                    alert(`삭제 실패: ${data.error}`);
+                }
+            } catch (e) {
+                alert(`오류: ${e.message}`);
+            }
+        }
+
+        async function scanForReanalysis() {
+            const scanBtn = document.getElementById('reanalyzeScanBtn');
+            const startBtn = document.getElementById('reanalyzeStartBtn');
+            const resultsDiv = document.getElementById('reanalyzeScanResults');
+            const statsDiv = document.getElementById('reanalyzeStats');
+            
+            scanBtn.disabled = true;
+            scanBtn.textContent = '스캔 중...';
+            
+            try {
+                const res = await fetch('/api/reanalyze/scan');
+                const data = await res.json();
+                
+                statsDiv.innerHTML = `
+                    <table style="width: 100%; color: #ccc;">
+                        <tr><td>전체 이미지</td><td style="text-align: right;"><strong>${data.total_images.toLocaleString()}</strong></td></tr>
+                        <tr><td>OCR 완료</td><td style="text-align: right;"><span style="color: #39ff14;">${data.ocr_completed.toLocaleString()}</span></td></tr>
+                        <tr><td>OCR 대기</td><td style="text-align: right;"><span style="color: #ffc107;">${data.ocr_pending.toLocaleString()}</span></td></tr>
+                        <tr><td>이미 분석됨</td><td style="text-align: right;"><span style="color: #888;">${data.already_analyzed.toLocaleString()}</span></td></tr>
+                        <tr><td>분석 대기</td><td style="text-align: right;"><span style="color: #00ff00; font-weight: bold;">${data.ready_for_analysis.toLocaleString()}</span></td></tr>
+                    </table>
+                `;
+                resultsDiv.style.display = 'block';
+                startBtn.disabled = data.ready_for_analysis === 0;
+            } catch (e) {
+                statsDiv.innerHTML = `<span style="color: #dc3545;">오류: ${e.message}</span>`;
+                resultsDiv.style.display = 'block';
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.textContent = '📊 스캔';
+            }
+        }
+
+        function startReanalysis() {
+            const skipAnalyzed = document.getElementById('reanalyzeSkipAnalyzed').checked;
+            const startBtn = document.getElementById('reanalyzeStartBtn');
+            const scanBtn = document.getElementById('reanalyzeScanBtn');
+            const progressSection = document.getElementById('reanalyzeProgressSection');
+            const progressBar = document.getElementById('reanalyzeProgressBar');
+            const statusDiv = document.getElementById('reanalyzeStatus');
+            
+            startBtn.disabled = true;
+            scanBtn.disabled = true;
+            progressSection.style.display = 'block';
+            
+            const url = `/api/reanalyze/start?skip_analyzed=${skipAnalyzed}`;
+            const eventSource = new EventSource(url);
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.error) {
+                    statusDiv.innerHTML = `<span style="color: #dc3545;">오류: ${data.error}</span>`;
+                    eventSource.close();
+                    startBtn.disabled = false;
+                    scanBtn.disabled = false;
+                    return;
+                }
+                
+                if (data.progress !== undefined) {
+                    progressBar.style.width = `${data.progress}%`;
+                    progressBar.textContent = `${data.progress}%`;
+                }
+                
+                if (data.message) {
+                    statusDiv.textContent = data.message;
+                }
+                
+                if (data.stats) {
+                    document.getElementById('reanalyzeStatProcessed').textContent = data.stats.processed;
+                    document.getElementById('reanalyzeStatEvents').textContent = data.stats.events_detected;
+                    document.getElementById('reanalyzeStatSkipped').textContent = 
+                        data.stats.skipped_analyzed + data.stats.skipped_no_ocr;
+                    document.getElementById('reanalyzeStatErrors').textContent = data.stats.errors;
+                }
+                
+                if (data.status === 'completed') {
+                    progressBar.classList.remove('progress-bar-animated');
+                    statusDiv.innerHTML = '<span style="color: #39ff14;">재분석 완료!</span>';
+                    startBtn.disabled = false;
+                    scanBtn.disabled = false;
+                    eventSource.close();
+                }
+            };
+            
+            eventSource.onerror = function() {
+                statusDiv.innerHTML = '<span style="color: #dc3545;">연결 끊김</span>';
+                startBtn.disabled = false;
+                scanBtn.disabled = false;
+                eventSource.close();
+            };
+        }
+    </script>
+</body>
+</html>

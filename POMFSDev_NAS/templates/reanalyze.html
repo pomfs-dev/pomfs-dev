@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reanalyze Images - P.O.MFS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <style>
+        .stat-box {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        .stat-box h4 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            color: var(--accent-color);
+        }
+        .stat-box small {
+            color: var(--text-secondary);
+        }
+        .progress-section {
+            display: none;
+        }
+        .progress-section.active {
+            display: block;
+        }
+        .status-running { color: #ffc107; }
+        .status-completed { color: #39ff14; }
+        .status-error { color: #dc3545; }
+        .status-idle { color: var(--text-secondary); }
+    </style>
+</head>
+
+<body>
+    {% if env == 'TEST' %}
+    <div class="test-banner" style="background-color: #dc3545; color: white; text-align: center; padding: 10px; font-weight: bold; animation: blink 2s infinite; margin-bottom: 20px; border-radius: 8px;">
+        TEST MODE
+    </div>
+    {% endif %}
+
+    <header>
+        <h1>P.O.MFS 이미지 재분석</h1>
+        <nav>
+            <a href="/" class="btn" style="background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);">대시보드</a>
+            <a href="/batch_collection" class="btn">배치 수집</a>
+            <a href="/review" class="btn">리뷰</a>
+            <a href="/test_tool" class="btn" style="background-color: #dc3545; border-color: #dc3545; color: white;">테스트 도구</a>
+        </nav>
+    </header>
+
+    <div class="container mt-4">
+        <p class="text-muted">scraped_data/ 폴더의 기존 이미지를 배치 재분석합니다</p>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="menu-item">
+                    <h3>필터 옵션</h3>
+                    <div class="mb-3">
+                        <label for="dateSelect" class="form-label">날짜</label>
+                        <select id="dateSelect" class="form-select">
+                            <option value="">모든 날짜</option>
+                            {% for date in dates %}
+                            <option value="{{ date }}">{{ date }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="accountSelect" class="form-label">계정</label>
+                        <select id="accountSelect" class="form-select" disabled>
+                            <option value="">모든 계정</option>
+                        </select>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="skipAnalyzed" checked>
+                        <label class="form-check-label" for="skipAnalyzed">
+                            이미 분석된 게시물 스킵
+                        </label>
+                    </div>
+                    <button id="scanBtn" class="btn" style="background-color: transparent; border: 1px solid var(--accent-color); color: var(--accent-color);">
+                        스캔
+                    </button>
+                    <button id="startBtn" class="btn" disabled>
+                        재분석 시작
+                    </button>
+                    <button id="stopBtn" class="btn" style="background-color: #dc3545; border-color: #dc3545; display: none;">
+                        중지
+                    </button>
+                    <hr class="my-3">
+                    <button id="ocrBtn" class="btn" style="background-color: #6c757d; border-color: #6c757d;" disabled>
+                        OCR 미완료 처리
+                    </button>
+                    <button id="ocrStopBtn" class="btn" style="background-color: #dc3545; border-color: #dc3545; display: none;">
+                        OCR 중지
+                    </button>
+                    <small class="d-block mt-2 text-muted">OCR 텍스트가 없는 이미지에 OCR 실행</small>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="menu-item">
+                    <h3>스캔 결과</h3>
+                    <div id="scanResults">
+                        <p class="text-muted">"스캔" 버튼을 클릭하여 통계를 확인하세요</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-item progress-section" id="progressCard">
+            <h3>재분석 진행 상황 <span id="statusBadge" class="badge bg-secondary ms-2">대기</span></h3>
+            <div class="progress mb-3" style="height: 25px; background: var(--card-bg);">
+                <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%; background: var(--accent-color);">0%</div>
+            </div>
+            <div id="progressStatus" class="text-muted mb-3">
+                <span id="currentCount">0</span> / <span id="totalCount">0</span> 이미지 처리 중...
+            </div>
+            <div class="row" id="statsRow">
+                <div class="col-md-3">
+                    <div class="stat-box">
+                        <h4 id="statProcessed">0</h4>
+                        <small>처리됨</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-box" style="border-color: var(--accent-color);">
+                        <h4 id="statEvents" style="color: #39ff14;">0</h4>
+                        <small>이벤트 감지</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-box">
+                        <h4 id="statSkipped">0</h4>
+                        <small>스킵됨</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-box" style="border-color: #dc3545;">
+                        <h4 id="statErrors" style="color: #dc3545;">0</h4>
+                        <small>오류</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="menu-item progress-section" id="ocrProgressCard">
+            <h3>OCR 진행 상황 <span id="ocrStatusBadge" class="badge bg-secondary ms-2">대기</span></h3>
+            <div class="progress mb-3" style="height: 25px; background: var(--card-bg);">
+                <div id="ocrProgressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%; background: #6c757d;">0%</div>
+            </div>
+            <div id="ocrProgressStatus" class="text-muted mb-3">
+                <span id="ocrCurrentCount">0</span> / <span id="ocrTotalCount">0</span> 이미지 OCR 중...
+            </div>
+            <div class="row" id="ocrStatsRow">
+                <div class="col-md-4">
+                    <div class="stat-box" style="border-color: #28a745;">
+                        <h4 id="ocrStatSuccess" style="color: #28a745;">0</h4>
+                        <small>OCR 성공</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box" style="border-color: #ffc107;">
+                        <h4 id="ocrStatFailed" style="color: #ffc107;">0</h4>
+                        <small>OCR 실패</small>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stat-box">
+                        <h4 id="ocrStatSkipped">0</h4>
+                        <small>스킵</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateSelect = document.getElementById('dateSelect');
+        const accountSelect = document.getElementById('accountSelect');
+        const scanBtn = document.getElementById('scanBtn');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const skipAnalyzed = document.getElementById('skipAnalyzed');
+        const scanResults = document.getElementById('scanResults');
+        const progressCard = document.getElementById('progressCard');
+        const progressBar = document.getElementById('progressBar');
+        const statusBadge = document.getElementById('statusBadge');
+        
+        let pollInterval = null;
+        
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/reanalyze/status');
+                const data = await res.json();
+                updateUI(data);
+                
+                if (data.running) {
+                    progressCard.classList.add('active');
+                    startBtn.disabled = true;
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-block';
+                } else if (data.status === 'completed' || data.status === 'error' || data.status === 'cancelled') {
+                    if (pollInterval) {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                    }
+                    startBtn.disabled = false;
+                    startBtn.style.display = 'inline-block';
+                    stopBtn.style.display = 'none';
+                    scanBtn.disabled = false;
+                }
+                
+                return data;
+            } catch (e) {
+                console.error('Status check error:', e);
+                return null;
+            }
+        }
+        
+        function updateUI(data) {
+            const progress = data.progress || 0;
+            progressBar.style.width = `${progress}%`;
+            progressBar.textContent = `${progress}%`;
+            
+            document.getElementById('currentCount').textContent = data.current || 0;
+            document.getElementById('totalCount').textContent = data.total || 0;
+            
+            if (data.stats) {
+                document.getElementById('statProcessed').textContent = data.stats.processed;
+                document.getElementById('statEvents').textContent = data.stats.events_detected;
+                document.getElementById('statSkipped').textContent = 
+                    (data.stats.skipped_analyzed || 0) + (data.stats.skipped_no_ocr || 0);
+                document.getElementById('statErrors').textContent = data.stats.errors;
+            }
+            
+            let statusClass = 'bg-secondary';
+            let statusText = data.status || 'idle';
+            
+            switch(data.status) {
+                case 'processing':
+                case 'initializing':
+                case 'starting':
+                    statusClass = 'bg-warning';
+                    statusText = '진행 중';
+                    progressBar.classList.add('progress-bar-animated');
+                    break;
+                case 'completed':
+                    statusClass = 'bg-success';
+                    statusText = '완료';
+                    progressBar.classList.remove('progress-bar-animated');
+                    progressBar.style.background = '#39ff14';
+                    break;
+                case 'error':
+                    statusClass = 'bg-danger';
+                    statusText = '오류: ' + (data.error || '');
+                    progressBar.classList.remove('progress-bar-animated');
+                    break;
+                case 'cancelled':
+                    statusClass = 'bg-secondary';
+                    statusText = '취소됨';
+                    progressBar.classList.remove('progress-bar-animated');
+                    break;
+                default:
+                    statusText = '대기';
+            }
+            
+            statusBadge.className = 'badge ms-2 ' + statusClass;
+            statusBadge.textContent = statusText;
+        }
+        
+        checkStatus();
+        
+        dateSelect.addEventListener('change', async function() {
+            const date = this.value;
+            if (!date) {
+                accountSelect.innerHTML = '<option value="">모든 계정</option>';
+                accountSelect.disabled = true;
+                return;
+            }
+            
+            try {
+                const res = await fetch(`/api/reanalyze/accounts?date=${date}`);
+                const data = await res.json();
+                
+                accountSelect.innerHTML = '<option value="">모든 계정</option>';
+                data.accounts.forEach(acc => {
+                    accountSelect.innerHTML += `<option value="${acc}">${acc}</option>`;
+                });
+                accountSelect.disabled = false;
+            } catch (e) {
+                console.error('Error loading accounts:', e);
+            }
+        });
+        
+        scanBtn.addEventListener('click', async function() {
+            const date = dateSelect.value;
+            const username = accountSelect.value;
+            
+            scanBtn.disabled = true;
+            scanBtn.innerHTML = '스캔 중...';
+            
+            try {
+                let url = '/api/reanalyze/scan?';
+                if (date) url += `date=${date}&`;
+                if (username) url += `username=${username}`;
+                
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                scanResults.innerHTML = `
+                    <table class="table table-sm" style="color: var(--text-color);">
+                        <tr><td>전체 이미지</td><td><strong>${data.total_images}</strong></td></tr>
+                        <tr><td>OCR 완료</td><td><span class="badge" style="background: var(--accent-color);">${data.ocr_completed}</span></td></tr>
+                        <tr><td>OCR 대기</td><td><span class="badge bg-warning">${data.ocr_pending}</span></td></tr>
+                        <tr><td>이미 분석됨</td><td><span class="badge bg-secondary">${data.already_analyzed}</span></td></tr>
+                        <tr><td>분석 대기</td><td><span class="badge" style="background: #39ff14; color: #000;">${data.ready_for_analysis}</span></td></tr>
+                    </table>
+                `;
+                
+                const status = await checkStatus();
+                if (!status || !status.running) {
+                    startBtn.disabled = data.ready_for_analysis === 0;
+                }
+                
+                const ocrStatus = await checkOcrStatus();
+                if (!ocrStatus || !ocrStatus.running) {
+                    ocrBtn.disabled = data.ocr_pending === 0;
+                }
+            } catch (e) {
+                scanResults.innerHTML = `<div class="alert alert-danger">오류: ${e.message}</div>`;
+            } finally {
+                scanBtn.disabled = false;
+                scanBtn.innerHTML = '스캔';
+            }
+        });
+        
+        startBtn.addEventListener('click', async function() {
+            const date = dateSelect.value;
+            const username = accountSelect.value;
+            const skip = skipAnalyzed.checked;
+            
+            let url = `/api/reanalyze/start?skip_analyzed=${skip}`;
+            if (date) url += `&date=${date}`;
+            if (username) url += `&username=${username}`;
+            
+            progressCard.classList.add('active');
+            startBtn.disabled = true;
+            scanBtn.disabled = true;
+            
+            progressBar.style.width = '0%';
+            progressBar.textContent = '0%';
+            progressBar.style.background = 'var(--accent-color)';
+            progressBar.classList.add('progress-bar-animated');
+            
+            try {
+                const res = await fetch(url, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    startBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-block';
+                    
+                    pollInterval = setInterval(checkStatus, 1000);
+                } else {
+                    alert('시작 실패: ' + (data.error || 'Unknown error'));
+                    startBtn.disabled = false;
+                    scanBtn.disabled = false;
+                }
+            } catch (e) {
+                alert('요청 실패: ' + e.message);
+                startBtn.disabled = false;
+                scanBtn.disabled = false;
+            }
+        });
+        
+        stopBtn.addEventListener('click', async function() {
+            try {
+                const res = await fetch('/api/reanalyze/stop', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    statusBadge.textContent = '중지 요청됨...';
+                }
+            } catch (e) {
+                console.error('Stop error:', e);
+            }
+        });
+        
+        const ocrBtn = document.getElementById('ocrBtn');
+        const ocrStopBtn = document.getElementById('ocrStopBtn');
+        const ocrProgressCard = document.getElementById('ocrProgressCard');
+        const ocrProgressBar = document.getElementById('ocrProgressBar');
+        const ocrStatusBadge = document.getElementById('ocrStatusBadge');
+        
+        let ocrPollInterval = null;
+        
+        async function checkOcrStatus() {
+            try {
+                const res = await fetch('/api/reanalyze/ocr-missing/status');
+                const data = await res.json();
+                updateOcrUI(data);
+                
+                if (data.running) {
+                    ocrProgressCard.classList.add('active');
+                    ocrBtn.disabled = true;
+                    ocrBtn.style.display = 'none';
+                    ocrStopBtn.style.display = 'inline-block';
+                } else if (data.status === 'completed' || data.status === 'error' || data.status === 'cancelled') {
+                    if (ocrPollInterval) {
+                        clearInterval(ocrPollInterval);
+                        ocrPollInterval = null;
+                    }
+                    ocrBtn.disabled = false;
+                    ocrBtn.style.display = 'inline-block';
+                    ocrStopBtn.style.display = 'none';
+                }
+                
+                return data;
+            } catch (e) {
+                console.error('OCR status check error:', e);
+                return null;
+            }
+        }
+        
+        function updateOcrUI(data) {
+            const progress = data.progress || 0;
+            ocrProgressBar.style.width = `${progress}%`;
+            ocrProgressBar.textContent = `${progress}%`;
+            
+            document.getElementById('ocrCurrentCount').textContent = data.current || 0;
+            document.getElementById('ocrTotalCount').textContent = data.total || 0;
+            
+            if (data.stats) {
+                document.getElementById('ocrStatSuccess').textContent = data.stats.ocr_success || 0;
+                document.getElementById('ocrStatFailed').textContent = data.stats.ocr_failed || 0;
+                document.getElementById('ocrStatSkipped').textContent = data.stats.skipped || 0;
+            }
+            
+            let statusClass = 'bg-secondary';
+            let statusText = data.status || 'idle';
+            
+            switch(data.status) {
+                case 'processing':
+                case 'starting':
+                    statusClass = 'bg-warning';
+                    statusText = '진행 중';
+                    ocrProgressBar.classList.add('progress-bar-animated');
+                    break;
+                case 'completed':
+                    statusClass = 'bg-success';
+                    statusText = '완료';
+                    ocrProgressBar.classList.remove('progress-bar-animated');
+                    ocrProgressBar.style.background = '#28a745';
+                    break;
+                case 'error':
+                    statusClass = 'bg-danger';
+                    statusText = '오류: ' + (data.error || '');
+                    ocrProgressBar.classList.remove('progress-bar-animated');
+                    break;
+                case 'cancelled':
+                    statusClass = 'bg-secondary';
+                    statusText = '취소됨';
+                    ocrProgressBar.classList.remove('progress-bar-animated');
+                    break;
+                default:
+                    statusText = '대기';
+            }
+            
+            ocrStatusBadge.className = 'badge ms-2 ' + statusClass;
+            ocrStatusBadge.textContent = statusText;
+        }
+        
+        checkOcrStatus();
+        
+        ocrBtn.addEventListener('click', async function() {
+            const date = dateSelect.value;
+            const username = accountSelect.value;
+            
+            let url = `/api/reanalyze/ocr-missing/start?`;
+            if (date) url += `date=${date}&`;
+            if (username) url += `username=${username}`;
+            
+            ocrProgressCard.classList.add('active');
+            ocrBtn.disabled = true;
+            
+            ocrProgressBar.style.width = '0%';
+            ocrProgressBar.textContent = '0%';
+            ocrProgressBar.style.background = '#6c757d';
+            ocrProgressBar.classList.add('progress-bar-animated');
+            
+            try {
+                const res = await fetch(url, { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    ocrBtn.style.display = 'none';
+                    ocrStopBtn.style.display = 'inline-block';
+                    
+                    ocrPollInterval = setInterval(checkOcrStatus, 1000);
+                } else {
+                    alert('OCR 시작 실패: ' + (data.error || 'Unknown error'));
+                    ocrBtn.disabled = false;
+                }
+            } catch (e) {
+                alert('요청 실패: ' + e.message);
+                ocrBtn.disabled = false;
+            }
+        });
+        
+        ocrStopBtn.addEventListener('click', async function() {
+            try {
+                const res = await fetch('/api/reanalyze/ocr-missing/stop', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    ocrStatusBadge.textContent = '중지 요청됨...';
+                }
+            } catch (e) {
+                console.error('OCR stop error:', e);
+            }
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>데이터 매칭 : P.O.MFS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Extra styles for this page */
+        td {
+            vertical-align: top;
+        }
+
+        .inferred-info {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>📝 데이터 매칭 및 검증</h1>
+        <nav>
+            <a href="/" class="btn btn-secondary">← 대시보드로 돌아가기</a>
+        </nav>
+    </header>
+
+    <div class="card">
+        <p style="margin-bottom: 20px; color: var(--text-muted);">
+            업로드된 데이터의 공연장(Venue)과 아티스트(Artist)를 지정해주세요.<br>
+            불필요한 데이터(티저, 앨범 등)는 우측의 <strong>삭제 버튼</strong>을 눌러 제외할 수 있습니다.
+        </p>
+
+        <form action="/save" method="post" id="matchingForm">
+            <input type="hidden" name="source_file" value="{{ filename }}">
+            <input type="hidden" name="image_folder_path" value="{{ image_folder }}">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">게시물 보기</th>
+                        <th style="width: 15%;">파일명 / 날짜</th>
+                        <th style="width: 15%;">업로드 날짜</th>
+                        <th style="width: 20%;">공연명 (Event Name)</th>
+                        <th style="width: 20%;">공연장 (Venue)</th>
+                        <th style="width: 15%;">아티스트 (Artists)</th>
+                        <th style="width: 5%;">삭제</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    {% for row in rows %}
+                    <tr class="data-row">
+                        <td style="text-align: center; vertical-align: middle;">
+                            {% if row.shortcode %}
+                            <a href="https://www.instagram.com/p/{{ row.shortcode }}" target="_blank" class="btn btn-sm"
+                                style="background-color: var(--card-bg); border: 1px solid var(--accent-color); color: var(--accent-color);">
+                                👁️ 보기
+                            </a>
+                            {% else %}
+                            <span style="color: var(--text-muted); font-size: 0.8em;">링크 없음</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="font-weight: bold; margin-bottom: 5px;">{{ row.filename }}</div>
+                            <input type="hidden" name="filename_{{ loop.index0 }}" value="{{ row.filename }}">
+                            <input type="text" name="date_{{ loop.index0 }}"
+                                value="{{ row.dates_found[0] if row.dates_found else '' }}" placeholder="YYYY-MM-DD"
+                                style="margin-top: 5px;">
+                        </td>
+                        <td style="text-align: center; vertical-align: middle;">
+                            <span style="color: var(--text-color); font-weight: 500;">
+                                {{ row.post_date or '-' }}
+                            </span>
+                        </td>
+                        <td>
+                            <input type="text" name="eventName_{{ loop.index0 }}" value="{{ row.event_name }}"
+                                placeholder="공연명 입력">
+                            <textarea name="content_{{ loop.index0 }}"
+                                style="display:none;">{{ row.caption }}</textarea>
+                        </td>
+                        <td>
+                            <div class="inferred-info">추출: {{ row.inferred_venue }}</div>
+                            <select name="venueId_{{ loop.index0 }}" onchange="toggleNewInput(this)">
+                                <option value="">(미지정 - 선택 필수)</option>
+                                {% set match_found = false %}
+                                {% for v in venues %}
+                                {% if row.inferred_venue and row.inferred_venue.lower() in v.venueName.lower() %}
+                                {% set match_found = true %}
+                                {% endif %}
+                                <option value="{{ v.id }}" {% if row.inferred_venue and row.inferred_venue.lower() in
+                                    v.venueName.lower() %}selected{% endif %}>
+                                    {{ v.venueName }}
+                                </option>
+                                {% endfor %}
+                                <option value="NEW" {% if row.inferred_venue and not match_found %}selected{% endif %}>
+                                    ➕ 새 공연장 직접 입력
+                                </option>
+                            </select>
+                            <input type="text" name="new_venue_{{ loop.index0 }}" value="{{ row.inferred_venue }}"
+                                placeholder="새 공연장 이름"
+                                style="{% if row.inferred_venue and not match_found %}display:block{% else %}display:none{% endif %}; margin-top:5px;">
+                        </td>
+                        <td>
+                            <div class="inferred-info">추출: {{ row.inferred_artist }}</div>
+                            <select name="artistId_{{ loop.index0 }}" onchange="toggleNewInput(this)">
+                                <option value="">(미지정)</option>
+                                {% set artist_found = false %}
+                                {% for u in users %}
+                                {% set is_match = (row.inferred_artist == u.id) or (row.inferred_artist == u.nickname)
+                                %}
+                                {% if is_match %}{% set artist_found = true %}{% endif %}
+                                <option value="{{ u.id }}" {% if is_match %}selected{% endif %}>
+                                    {{ u.nickname }} ({{ u.id }})
+                                </option>
+                                {% endfor %}
+                                <option value="NEW" {% if row.inferred_artist and not artist_found %}selected{% endif
+                                    %}>
+                                    ➕ 새 아티스트 등록
+                                </option>
+                            </select>
+                            <input type="text" name="new_artist_{{ loop.index0 }}" value="{{ row.inferred_artist }}"
+                                placeholder="ID,Nickname"
+                                style="{% if row.inferred_artist and not artist_found %}display:block{% else %}display:none{% endif %}; margin-top:5px;">
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteRow(this)">🗑️</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 20px; text-align: right;">
+                <button type="submit" class="btn">💾 저장하기</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function toggleNewInput(selectElement) {
+            const input = selectElement.nextElementSibling;
+            if (selectElement.value === 'NEW') {
+                input.style.display = 'block';
+                input.required = true;
+            } else {
+                input.style.display = 'none';
+                input.required = false;
+            }
+        }
+
+        function deleteRow(btn) {
+            if (confirm('정말로 이 항목을 제외하시겠습니까?')) {
+                const row = btn.closest('tr');
+                row.remove();
+                reindexRows();
+            }
+        }
+
+        // Backend expects sequential indices (0, 1, 2...)
+        // We must re-index all inputs after deletion.
+        function reindexRows() {
+            const rows = document.querySelectorAll('#tableBody tr.data-row');
+            rows.forEach((row, index) => {
+                // Update names for all inputs in this row
+                const inputs = row.querySelectorAll('input, select, textarea');
+                inputs.forEach(input => {
+                    const name = input.getAttribute('name');
+                    if (name) {
+                        // Regex to replace number at the end of name, e.g., filename_3 -> filename_1
+                        const newName = name.replace(/_\d+$/, '_' + index);
+                        input.setAttribute('name', newName);
+                    }
+                });
+            });
+        }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% include 'components/developer_log.html' %}
+</body>
+
+</html>
