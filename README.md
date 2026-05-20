@@ -30,7 +30,7 @@ I build AI-assisted product systems for music, marketing, and operations.
 - **Email:** [david.kwon@prideofmisfits.com](mailto:david.kwon@prideofmisfits.com)
 
 <p align="center">
-  <img src="https://wakatime.com/badge/user/2469d651-952d-4418-ad2d-27a0b70774ac/project/3fcdf535-8910-40c1-90b3-28a0e4977362.svg" alt="wakatime">
+  <a href="https://wakatime.com/@2469d651-952d-4418-ad2d-27a0b70774ac"><img src="https://wakatime.com/badge/user/2469d651-952d-4418-ad2d-27a0b70774ac.svg" alt="wakatime total coding time"></a>
   &nbsp;&nbsp;
   <img src="https://komarev.com/ghpvc/?username=pomfs-dev&color=70a145&style=flat-square&label=VISITORS" alt="visitors" />
 </p>
