@@ -17,8 +17,13 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 - **Marketing & SEO:** 14+ years of expertise in SEO strategy and e-commerce (Coupang specialist)
 
 ## 📈 Technical Performance
-![David's GitHub Stats](https://github-readme-stats.vercel.app/api?username=pomfs-dev&show_icons=true&theme=dark&title_color=70a145&icon_color=70a145&text_color=ffffff&bg_color=0d1117&hide_border=true&count_private=true)
-![Top Langs](https://github-readme-stats.vercel.app/api/top-langs/?username=pomfs-dev&layout=compact&title_color=70a145&icon_color=70a145&text_color=ffffff&bg_color=0d1117&hide_border=true)
+I build AI-assisted product systems for music, marketing, and operations.
+
+- **AI Orchestration:** Development workflows for planning, coding, review, and release using AI agents and CLI automation.
+- **P.O.MFS Platform:** Product development across web, app, backend, artist growth, and content systems.
+- **Automation Pipelines:** Repeatable systems for content collection, translation, publishing, release notes, and reporting.
+- **Product UI:** Frontend implementation for artist-facing, fan-facing, and internal operational tools.
+- **Infrastructure Direction:** Development planning across AWS, NAS backend workflows, app delivery, and release operations.
 
 ## 🌐 Connect with Me
 - **Company:** [Pride of Misfits (P.O.MFS)](https://prideofmisfits.com)
@@ -33,4 +38,3 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 ---
 
 > "Orchestrating the future where AI meets Art." 🎨✨
-
