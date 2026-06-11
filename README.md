@@ -7,24 +7,40 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 ---
 
 ## 🛠 My Current Focus
-- **AI Orchestration:** Building seamless workflows using **Google Jules**, **Google CLI**, and **Google Antigravity**.
-- **P.O.MFS Project:** Developing a hybrid AI+B2B+Consumer model for global artist growth.
-- **Blogpert:** Engineering an advanced AI-powered blog automation system to revolutionize content marketing.
+- **MiSFY (P.O.MFS Platform):** A live-music community platform connecting artists, venues, and fans — **iOS 3.0.0 submitted to App Store review (Jun 2026)**, alongside a community web app covering Today, Shows (event map), Feed, chat, ticketing, and settlements.
+- **AI-Orchestrated Development:** Running the full product cycle — planning, coding, review, and release — on **Claude Code** and **Codex** agent workflows, with every release published as sanitized public notes.
+- **Open Source:** [iOS Release Assistant](https://github.com/pomfs-dev/ios-release-assistant) — a beginner-friendly release-prep assistant for Xcode, XcodeGen, and App Store Connect (MIT).
+
+## 🚀 Recent Shipping Highlights
+Compiled from the [public release history](https://github.com/pomfs-dev/POMFS-release-notes) — **73 sanitized release notes** across iOS, Web, Backend, Data Pipeline, and Operations (May 17 → Jun 12, 2026):
+
+- **iOS:** MiSFY 3.0.0 App Store review submission, payment return flows, ticket deeplinks, scoped location permissions.
+- **Web:** Event map with venue details, nearby new-show recommendations, curation feed with comments, global chat rollout.
+- **Payments & Settlement:** Toss / Naver Pay / PayPal checkout, refund cascades with host notifications, settlement and payout reconciliation.
+- **Data Pipeline:** Daily AI-assisted show/venue collection, geocode enrichment, and auto-publish with data-quality gates.
+- **Global-Ready:** Consistent ko / en / ja / es / th language experience across web, push notifications, iOS, and email templates.
+- **Operations:** Release/deploy automation, privacy (PII) hardening, and a public release-history system with automated AI token snapshots.
 
 ## 🧰 Tech Stack & Tools
-- **AI Tools:** Google Jules, Google Antigravity, Gemini 2.0/2.5 Pro & Flash
-- **Development:** GitHub CLI, Python, Automation Frameworks
+Based on what actually ships in [pomfs-dev repositories](https://github.com/pomfs-dev?tab=repositories):
+
+- **AI Development:** Claude Code (Anthropic) and Codex (OpenAI) agent workflows · 32.8B+ lifetime tokens · tui-monitor usage aggregation
+- **Frontend:** TypeScript, React 19, Vite, Vitest
+- **iOS Delivery:** Xcode, XcodeGen, App Store Connect API, Node.js local-bridge tooling
+- **Backend & Infra:** Payment integrations (Toss, Naver Pay, PayPal), transactional email delivery, AWS + NAS backend workflows, release/deploy automation
 - **Marketing & SEO:** 14+ years of expertise in SEO strategy and e-commerce (Coupang specialist)
 
 ## 📈 Technical Performance
-I build AI-assisted product systems for music, marketing, and operations.
+I build AI-assisted product systems for music, marketing, and operations. Figures below are static snapshots published in the [release history](https://github.com/pomfs-dev/POMFS-release-notes#ai-lifetime-token-usage) (as of 2026-06-12 02:49 KST):
 
-- **AI Orchestration:** Development workflows for planning, coding, review, and release using AI agents and CLI automation.
-- **P.O.MFS Platform:** Product development across web, app, backend, artist growth, and content systems.
-- **Automation Pipelines:** Repeatable systems for content collection, translation, publishing, release notes, and reporting.
-- **Product UI:** Frontend implementation for artist-facing, fan-facing, and internal operational tools.
-- **Infrastructure Direction:** Development planning across AWS, NAS backend workflows, app delivery, and release operations.
-- **Execution Intensity:** Estimated 2,000+ hours of sustained product-building since Dec 2025 across development, AI workflows, research, testing, deployment, and operations.
+| Metric | Claude Code | Codex |
+|---|---|---|
+| Lifetime tokens | **27.1B** | **5.7B** |
+| Sessions | 1,836 session files | 375 sessions |
+| Output tokens | 212.2M | 21.9M |
+
+- **Execution Intensity:** Estimated **2,200+ hours** of sustained product-building since Dec 2025 — consistent with the ~2,200 AI-assisted working sessions logged to date.
+- **Release Cadence:** 73 public release notes shipped between May 17 and Jun 12, 2026.
 
 ## 🌐 Connect with Me
 - **Company:** [Pride of Misfits (P.O.MFS)](https://prideofmisfits.com)
@@ -33,7 +49,9 @@ I build AI-assisted product systems for music, marketing, and operations.
 <p align="center">
   <img src="https://img.shields.io/badge/Build%20Period-Dec%202025%20%E2%86%92%20Present-70a145?style=flat-square&labelColor=555" alt="build period: Dec 2025 to present" />
   &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/Estimated%20Build%20Time-2%2C000%2B%20hrs-70a145?style=flat-square&labelColor=555" alt="estimated build time: 2,000+ hours" />
+  <img src="https://img.shields.io/badge/Estimated%20Build%20Time-2%2C200%2B%20hrs-70a145?style=flat-square&labelColor=555" alt="estimated build time: 2,200+ hours" />
+  &nbsp;&nbsp;
+  <img src="https://img.shields.io/badge/AI%20Lifetime%20Tokens-32.8B%2B-70a145?style=flat-square&labelColor=555" alt="AI lifetime tokens: 32.8 billion plus" />
   &nbsp;&nbsp;
   <img src="https://komarev.com/ghpvc/?username=pomfs-dev&color=70a145&style=flat-square&label=VISITORS" alt="visitors" />
 </p>
