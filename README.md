@@ -12,35 +12,35 @@ I am a **16-year veteran in Online Marketing** who transitioned into the frontie
 - **Open Source:** [iOS Release Assistant](https://github.com/pomfs-dev/ios-release-assistant) — a beginner-friendly release-prep assistant for Xcode, XcodeGen, and App Store Connect (MIT).
 
 ## 🚀 Recent Shipping Highlights
-Compiled from the [public release history](https://github.com/pomfs-dev/POMFS-release-notes) — **73 sanitized release notes** across iOS, Web, Backend, Data Pipeline, and Operations (May 17 → Jun 12, 2026):
+Compiled from the [public release history](https://github.com/pomfs-dev/POMFS-release-notes) — **133 sanitized release notes** across iOS, Web, Backend, Data Pipeline, and Operations (May 17 → Jul 12, 2026):
 
 - **iOS:** MiSFY 3.0.0 App Store review submission, payment return flows, ticket deeplinks, scoped location permissions.
-- **Web:** Event map with venue details, nearby new-show recommendations, curation feed with comments, global chat rollout.
-- **Payments & Settlement:** Toss / Naver Pay / PayPal checkout, refund cascades with host notifications, settlement and payout reconciliation.
+- **Web:** Event map with venue/AI layer split, nearby new-show recommendations, curation feed & stories, global chat, artist YouTube auto-preview, and creator/venue profile editing.
+- **Payments & Settlement:** Region-routed checkout — Toss (domestic) + Stripe (international) — with admin refund approvals and settlement reconciliation (PayPal fully retired).
 - **Data Pipeline:** Daily AI-assisted show/venue collection, geocode enrichment, and auto-publish with data-quality gates.
 - **Global-Ready:** Consistent ko / en / ja / es / th language experience across web, push notifications, iOS, and email templates.
-- **Operations:** Release/deploy automation, privacy (PII) hardening, and a public release-history system with automated AI token snapshots.
+- **Operations:** Release/deploy automation, privacy (PII) hardening, in-app admin tooling (refunds, theme, settlement), and a public release-history system with automated AI token snapshots.
 
 ## 🧰 Tech Stack & Tools
 Based on what actually ships in [pomfs-dev repositories](https://github.com/pomfs-dev?tab=repositories):
 
-- **AI Development:** Claude Code (Anthropic) and Codex (OpenAI) agent workflows · 32.8B+ lifetime tokens · tui-monitor usage aggregation
+- **AI Development:** Claude Code (Anthropic) and Codex (OpenAI) agent workflows · 48.9B+ lifetime tokens · tui-monitor usage aggregation
 - **Frontend:** TypeScript, React 19, Vite, Vitest
 - **iOS Delivery:** Xcode, XcodeGen, App Store Connect API, Node.js local-bridge tooling
-- **Backend & Infra:** Payment integrations (Toss, Naver Pay, PayPal), transactional email delivery, AWS + NAS backend workflows, release/deploy automation
+- **Backend & Infra:** Payment integrations (Toss, Stripe), transactional email delivery, AWS + NAS backend workflows, release/deploy automation
 - **Marketing & SEO:** 14+ years of expertise in SEO strategy and e-commerce (Coupang specialist)
 
 ## 📈 Technical Performance
-I build AI-assisted product systems for music, marketing, and operations. Figures below are static snapshots published in the [release history](https://github.com/pomfs-dev/POMFS-release-notes#ai-lifetime-token-usage) (as of 2026-06-12 02:49 KST):
+I build AI-assisted product systems for music, marketing, and operations. Figures below are static snapshots published in the [release history](https://github.com/pomfs-dev/POMFS-release-notes#ai-lifetime-token-usage) (as of 2026-07-12 KST):
 
 | Metric | Claude Code | Codex |
 |---|---|---|
-| Lifetime tokens | **27.1B** | **5.7B** |
-| Sessions | 1,836 session files | 375 sessions |
-| Output tokens | 212.2M | 21.9M |
+| Lifetime tokens | **43.0B** | **5.9B** |
+| Sessions | 2,906 session files | 502 sessions |
+| Output tokens | 278.8M | 23.2M |
 
-- **Execution Intensity:** Estimated **2,200+ hours** of sustained product-building since Dec 2025 — consistent with the ~2,200 AI-assisted working sessions logged to date.
-- **Release Cadence:** 73 public release notes shipped between May 17 and Jun 12, 2026.
+- **Execution Intensity:** Estimated **2,500+ hours** of sustained product-building since Dec 2025 across development, AI workflows, research, testing, deployment, and operations — spanning 3,400+ AI-assisted sessions (2,906 Claude Code + 502 Codex).
+- **Release Cadence:** 133 public release notes shipped between May 17 and Jul 12, 2026.
 
 ## 🌐 Connect with Me
 - **Company:** [Pride of Misfits (P.O.MFS)](https://prideofmisfits.com)
@@ -49,9 +49,9 @@ I build AI-assisted product systems for music, marketing, and operations. Figure
 <p align="center">
   <img src="https://img.shields.io/badge/Build%20Period-Dec%202025%20%E2%86%92%20Present-70a145?style=flat-square&labelColor=555" alt="build period: Dec 2025 to present" />
   &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/Estimated%20Build%20Time-2%2C200%2B%20hrs-70a145?style=flat-square&labelColor=555" alt="estimated build time: 2,200+ hours" />
+  <img src="https://img.shields.io/badge/Estimated%20Build%20Time-2%2C500%2B%20hrs-70a145?style=flat-square&labelColor=555" alt="estimated build time: 2,500+ hours" />
   &nbsp;&nbsp;
-  <img src="https://img.shields.io/badge/AI%20Lifetime%20Tokens-32.8B%2B-70a145?style=flat-square&labelColor=555" alt="AI lifetime tokens: 32.8 billion plus" />
+  <img src="https://img.shields.io/badge/AI%20Lifetime%20Tokens-48.9B%2B-70a145?style=flat-square&labelColor=555" alt="AI lifetime tokens: 48.9 billion plus" />
   &nbsp;&nbsp;
   <img src="https://komarev.com/ghpvc/?username=pomfs-dev&color=70a145&style=flat-square&label=VISITORS" alt="visitors" />
 </p>
